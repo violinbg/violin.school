@@ -87,7 +87,9 @@
     "QUICK_USERS_TITLE": "Gestión de usuarios",
     "QUICK_USERS_DESC": "Administra los usuarios de la aplicación",
     "QUICK_AI_SETTINGS_TITLE": "AI Settings",
-    "QUICK_AI_SETTINGS_DESC": "Configure xAI token, usage tracking, and limits"
+    "QUICK_AI_SETTINGS_DESC": "Configure xAI token, usage tracking, and limits",
+    "QUICK_DEAN_OFFICE_TITLE": "Dean Office",
+    "QUICK_DEAN_OFFICE_DESC": "Chat with Dean Office assistant in real time"
   },
   "USERS": {
     "TITLE": "Gestión de usuarios",
@@ -213,5 +215,32 @@
     "TOAST_SETTINGS_ERROR": "Failed to save AI settings",
     "TOAST_TEST_SUCCESS": "xAI token test succeeded",
     "TOAST_TEST_ERROR": "xAI token test failed"
+  },
+  "DEAN_OFFICE": {
+    "CONVERSATIONS": "Conversations",
+    "NEW_TITLE_PLACEHOLDER": "Optional title",
+    "NEW_SUMMARY_PLACEHOLDER": "Optional summary",
+    "CREATE_CONVERSATION": "Create conversation",
+    "LOADING_CONVERSATIONS": "Loading conversations…",
+    "NO_CONVERSATIONS": "No conversations yet. Create your first one.",
+    "UNTITLED": "Untitled conversation",
+    "NO_SUMMARY": "No summary",
+    "CHAT": "Dean Office Chat",
+    "SELECT_PROMPT": "Select a conversation to view messages.",
+    "LOADING_MESSAGES": "Loading messages…",
+    "NO_MESSAGES": "No messages yet. Ask Dean Office anything.",
+    "ROLE_USER": "You",
+    "ROLE_ASSISTANT": "Dean Office",
+    "MESSAGE_PENDING": "...",
+    "STREAMING": "Augustus is typing…",
+    "MESSAGE_PLACEHOLDER": "Type your message",
+    "SEND": "Send",
+    "DATE_UNKNOWN": "Unknown date",
+    "TOAST_ERROR": "Error",
+    "ERROR_LOAD_CONVERSATIONS": "Failed to load conversations",
+    "ERROR_CREATE_CONVERSATION": "Failed to create conversation",
+    "ERROR_LOAD_MESSAGES": "Failed to load messages",
+    "ERROR_SEND_MESSAGE": "Failed to send message",
+    "ERROR_STREAM": "Streaming failed"
   }
 }

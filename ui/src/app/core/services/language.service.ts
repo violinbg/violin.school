@@ -18,7 +18,7 @@ export const SUPPORTED_LANGUAGES: Language[] = [
   { code: 'zh', label: '中文',        flag: '🇨🇳' },
 ];
 
-const LANGUAGE_KEY = 'vr_language';
+const LANGUAGE_KEY = 'vs_language';
 
 @Injectable({ providedIn: 'root' })
 export class LanguageService {

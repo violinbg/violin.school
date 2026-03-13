@@ -42,6 +42,11 @@ export class LoginDialogComponent {
     }
   }
 
+  onEnter(event: Event): void {
+    event.preventDefault();
+    void this.submit();
+  }
+
   openRegister(): void {
     this.visible = false;
     this.closed.emit();

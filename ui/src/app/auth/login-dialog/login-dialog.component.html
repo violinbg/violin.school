@@ -7,7 +7,7 @@
   [style]="{ width: '380px' }"
   (onHide)="close()"
 >
-  <form class="login-form" (ngSubmit)="submit()">
+    <form class="login-form" (ngSubmit)="submit()" (keydown.enter)="onEnter($event)">
     @if (error()) {
       <p-message severity="error" [text]="error()" styleClass="w-full mb-1" />
     }

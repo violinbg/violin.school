@@ -3,7 +3,7 @@ import { inject } from '@angular/core';
 import { catchError, from, switchMap, throwError } from 'rxjs';
 import { AuthService } from '../services/auth.service';
 
-const TOKEN_KEY = 'vr_token';
+const TOKEN_KEY = 'vs_token';
 
 /** Endpoints that should never trigger a token refresh on 401. */
 function isAuthEndpoint(req: HttpRequest<unknown>): boolean {

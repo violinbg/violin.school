@@ -217,25 +217,33 @@ func (s *Service) UpdateSettings(ctx context.Context, input UpdateSettingsInput)
 }
 
 func (s *Service) TestConfiguredToken(ctx context.Context) (UsageMetrics, error) {
-	values, err := s.readConfigValues(ctx, []string{"xai_base_url", "xai_api_token_ciphertext"})
+	baseURL, token, err := s.ResolveStreamingConfig(ctx)
 	if err != nil {
 		return UsageMetrics{}, err
+	}
+	return s.client.TestTokenWithUsage(ctx, baseURL, token)
+}
+
+func (s *Service) ResolveStreamingConfig(ctx context.Context) (string, string, error) {
+	values, err := s.readConfigValues(ctx, []string{"xai_base_url", "xai_api_token_ciphertext"})
+	if err != nil {
+		return "", "", err
 	}
 
 	tokenCiphertext := strings.TrimSpace(values["xai_api_token_ciphertext"])
 	if tokenCiphertext == "" {
-		return UsageMetrics{}, errors.New("xai token is not configured")
+		return "", "", errors.New("xai token is not configured")
 	}
 	if len(s.encryptKey) == 0 {
-		return UsageMetrics{}, errors.New("XAI_TOKEN_ENCRYPTION_KEY is required to decrypt token")
+		return "", "", errors.New("XAI_TOKEN_ENCRYPTION_KEY is required to decrypt token")
 	}
 	token, err := DecryptToken(tokenCiphertext, s.encryptKey)
 	if err != nil {
-		return UsageMetrics{}, err
+		return "", "", err
 	}
 
 	baseURL := fallback(values["xai_base_url"], "https://api.x.ai/v1")
-	return s.client.TestTokenWithUsage(ctx, baseURL, token)
+	return baseURL, token, nil
 }
 
 func (s *Service) GetUsageSummary(ctx context.Context) (UsageSummary, error) {
