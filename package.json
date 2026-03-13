@@ -1,0 +1,17 @@
+{
+  "name": "violin.school",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build:ui": "npm run build --prefix ui",
+    "build:server": "go build -o violin.school.exe .",
+    "build": "npm run build:ui && npm run build:server",
+    "dev:ui": "npm run --prefix ui start -- --proxy-config proxy.conf.json",
+    "dev:server": "go run . -addr :8080",
+    "dev": "concurrently -k -n server,ui -c blue,green \"npm run dev:server\" \"npm run dev:ui\"",
+    "clean": "node -e \"const fs=require('fs');['ui/dist','violin.school.exe','violin.school.db'].forEach(p=>{try{fs.rmSync(p,{recursive:true,force:true})}catch{}})\" && echo cleaned"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

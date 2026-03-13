@@ -1,0 +1,86 @@
+<p-dialog
+  [header]="'AUTH.REGISTER.TITLE' | translate"
+  [visible]="visible"
+  (visibleChange)="visibleChange.emit($event)"
+  [modal]="true"
+  [closable]="true"
+  [style]="{ width: '420px' }"
+  [draggable]="false"
+  [resizable]="false">
+
+  <form [formGroup]="form" (ngSubmit)="submit()" class="register-form">
+    <div class="field">
+      <label for="reg-username">{{ 'AUTH.REGISTER.USERNAME' | translate }}</label>
+      <input
+        id="reg-username"
+        pInputText
+        formControlName="username"
+        [placeholder]="'AUTH.REGISTER.USERNAME_PLACEHOLDER' | translate"
+        class="w-full" />
+      @if (form.controls.username.invalid && form.controls.username.touched) {
+        <small class="p-error">{{ 'AUTH.REGISTER.USERNAME_ERROR' | translate }}</small>
+      }
+    </div>
+
+    <div class="field">
+      <label for="reg-fullname">{{ 'AUTH.REGISTER.FULL_NAME' | translate }}</label>
+      <input
+        id="reg-fullname"
+        pInputText
+        formControlName="full_name"
+        [placeholder]="'AUTH.REGISTER.FULL_NAME_PLACEHOLDER' | translate"
+        class="w-full" />
+      @if (form.controls.full_name.invalid && form.controls.full_name.touched) {
+        <small class="p-error">{{ 'AUTH.REGISTER.FULL_NAME_ERROR' | translate }}</small>
+      }
+    </div>
+
+    <div class="field">
+      <label for="reg-password">{{ 'AUTH.REGISTER.PASSWORD' | translate }}</label>
+      <p-password
+        inputId="reg-password"
+        formControlName="password"
+        [toggleMask]="true"
+        [feedback]="false"
+        styleClass="w-full"
+        inputStyleClass="w-full"
+        [placeholder]="'AUTH.REGISTER.PASSWORD_PLACEHOLDER' | translate" />
+      @if (form.controls.password.invalid && form.controls.password.touched) {
+        <small class="p-error">{{ 'AUTH.REGISTER.PASSWORD_ERROR' | translate }}</small>
+      }
+    </div>
+
+    @if (captcha()) {
+      <div class="field captcha-field">
+        <label>{{ 'AUTH.REGISTER.CAPTCHA_LABEL' | translate }}</label>
+        <div class="captcha-row">
+          <span class="captcha-question">{{ captcha()!.question }}</span>
+          <input
+            pInputText
+            formControlName="captcha_answer"
+            [placeholder]="'AUTH.REGISTER.CAPTCHA_PLACEHOLDER' | translate"
+            class="captcha-input" />
+          <p-button
+            icon="pi pi-refresh"
+            severity="secondary"
+            [text]="true"
+            (onClick)="loadCaptcha()"
+            [pTooltip]="'AUTH.REGISTER.CAPTCHA_REFRESH_TOOLTIP' | translate"
+            tooltipPosition="top" />
+        </div>
+        @if (form.controls.captcha_answer.invalid && form.controls.captcha_answer.touched) {
+          <small class="p-error">{{ 'AUTH.REGISTER.CAPTCHA_ANSWER_ERROR' | translate }}</small>
+        }
+      </div>
+    }
+  </form>
+
+  <ng-template pTemplate="footer">
+    <p-button [label]="'AUTH.REGISTER.CANCEL' | translate" severity="secondary" [text]="true" (onClick)="close()" />
+    <p-button
+      [label]="'AUTH.REGISTER.SUBMIT' | translate"
+      [loading]="loading()"
+      [disabled]="form.invalid"
+      (onClick)="submit()" />
+  </ng-template>
+</p-dialog>

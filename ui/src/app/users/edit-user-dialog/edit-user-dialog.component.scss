@@ -1,0 +1,35 @@
+.dialog-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+
+  label {
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+}
+
+.error {
+  color: var(--p-red-500);
+}
+
+.text-muted {
+  color: var(--p-text-muted-color);
+  font-size: 0.8rem;
+}
+
+.user-info {
+  color: var(--p-text-muted-color);
+  font-size: 0.9rem;
+  margin: 0 0 0.5rem;
+}
+
+.w-full {
+  width: 100%;
+}

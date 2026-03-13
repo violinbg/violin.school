@@ -1,0 +1,45 @@
+<p-dialog
+  [header]="'ABOUT.TITLE' | translate"
+  [(visible)]="visible"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: '550px' }"
+  (onHide)="close()"
+>
+  <div class="about-content">
+    <div class="about-section">
+      <h3><i class="pi pi-info-circle"></i> {{ 'ABOUT.WHAT_IS' | translate }}</h3>
+      <p>{{ 'ABOUT.WHAT_IS_TEXT' | translate }}</p>
+    </div>
+
+    <div class="about-section">
+      <h3><i class="pi pi-star"></i> {{ 'ABOUT.KEY_FEATURES' | translate }}</h3>
+      <ul>
+        <li>{{ 'ABOUT.FEATURE_COURSES' | translate }}</li>
+        <li>{{ 'ABOUT.FEATURE_LESSONS' | translate }}</li>
+        <li>{{ 'ABOUT.FEATURE_PROGRESS' | translate }}</li>
+        <li>{{ 'ABOUT.FEATURE_COMMUNITY' | translate }}</li>
+      </ul>
+    </div>
+
+    <div class="about-section">
+      <h3><i class="pi pi-shield"></i> {{ 'ABOUT.PRIVACY_TITLE' | translate }}</h3>
+      <p>{{ 'ABOUT.PRIVACY_TEXT' | translate }}</p>
+    </div>
+
+    <div class="about-section">
+      <h3><i class="pi pi-users"></i> {{ 'ABOUT.WHO_FOR_TITLE' | translate }}</h3>
+      <p>{{ 'ABOUT.WHO_FOR_TEXT' | translate }}</p>
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <p-button
+      [label]="'ABOUT.GET_STARTED' | translate"
+      icon="pi pi-arrow-right"
+      iconPos="right"
+      (onClick)="close()"
+    />
+  </ng-template>
+</p-dialog>

@@ -1,0 +1,79 @@
+<header class="app-header" [class.app-header--static]="!sticky">
+  <div class="app-header__leading">
+    @if (leftAction) {
+      <p-button
+        [label]="resolveLabel(leftAction)"
+        [icon]="leftAction.icon"
+        [severity]="leftAction.severity"
+        [outlined]="leftAction.outlined ?? false"
+        [text]="leftAction.text ?? false"
+        [size]="leftAction.size ?? 'small'"
+        [loading]="leftAction.loading ?? false"
+        [disabled]="leftAction.disabled ?? false"
+        [pTooltip]="resolveTooltip(leftAction)"
+        tooltipPosition="bottom"
+        (onClick)="onAction(leftAction)"
+      />
+    }
+
+    <span class="app-header__brand">
+      <i [class]="logoIcon"></i>
+      <span class="app-header__title">{{ resolvedTitle }}</span>
+    </span>
+  </div>
+
+  <span class="app-header__spacer"></span>
+
+  @if (showUsername && username) {
+    <span class="app-header__user">
+      <i class="pi pi-user"></i>
+      {{ username }}
+    </span>
+  }
+
+  @if (showLanguageSelector) {
+    <p-select
+      class="app-header__lang-select"
+      [options]="languageService.languages"
+      [ngModel]="languageService.currentLang"
+      [size]="'small'"
+      optionLabel="label"
+      optionValue="code"
+      [style]="{ minWidth: '140px' }"
+      (ngModelChange)="onLanguageChange($event)"
+    >
+      <ng-template #selectedItem let-lang>
+        <span class="lang-option">
+          <span class="lang-option__flag">{{ lang.flag }}</span>
+          <span>{{ lang.label }}</span>
+        </span>
+      </ng-template>
+      <ng-template #item let-lang>
+        <span class="lang-option">
+          <span class="lang-option__flag">{{ lang.flag }}</span>
+          <span>{{ lang.label }}</span>
+        </span>
+      </ng-template>
+    </p-select>
+  }
+
+  @if (visibleActions.length > 0) {
+    <nav class="app-header__actions" [class.app-header__actions--single]="visibleActions.length === 1">
+      @for (action of visibleActions; track action.id) {
+        <p-button
+          [label]="resolveLabel(action)"
+          [icon]="action.icon"
+          [severity]="action.severity"
+          [outlined]="action.outlined ?? false"
+          [text]="action.text ?? false"
+          [size]="action.size ?? 'small'"
+          [loading]="action.loading ?? false"
+          [disabled]="action.disabled ?? false"
+          [pTooltip]="resolveTooltip(action)"
+          tooltipPosition="bottom"
+          (onClick)="onAction(action)"
+        />
+      }
+    </nav>
+  }
+</header>

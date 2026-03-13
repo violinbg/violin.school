@@ -1,0 +1,61 @@
+<p-dialog
+  [header]="'AUTH.LOGIN.TITLE' | translate"
+  [(visible)]="visible"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [style]="{ width: '380px' }"
+  (onHide)="close()"
+>
+  <form class="login-form" (ngSubmit)="submit()">
+    @if (error()) {
+      <p-message severity="error" [text]="error()" styleClass="w-full mb-1" />
+    }
+
+    <div class="field">
+      <label for="loginUsername">{{ 'AUTH.LOGIN.USERNAME' | translate }}</label>
+      <input
+        pInputText
+        id="loginUsername"
+        [(ngModel)]="username"
+        name="username"
+        [placeholder]="'AUTH.LOGIN.USERNAME_PLACEHOLDER' | translate"
+        required
+        class="w-full"
+        autocomplete="username"
+      />
+    </div>
+
+    <div class="field">
+      <label for="loginPassword">{{ 'AUTH.LOGIN.PASSWORD' | translate }}</label>
+      <p-password
+        inputId="loginPassword"
+        [(ngModel)]="password"
+        name="password"
+        [placeholder]="'AUTH.LOGIN.PASSWORD_PLACEHOLDER' | translate"
+        [toggleMask]="true"
+        [feedback]="false"
+        styleClass="w-full"
+        inputStyleClass="w-full"
+        required
+      />
+    </div>
+
+    <p-button
+      type="submit"
+      [label]="'AUTH.LOGIN.SUBMIT' | translate"
+      icon="pi pi-sign-in"
+      iconPos="right"
+      styleClass="w-full mt-2"
+      [loading]="loading()"
+      [disabled]="!username || !password"
+    />
+
+    @if (auth.registrationEnabled()) {
+      <div class="register-link">
+        {{ 'AUTH.LOGIN.NO_ACCOUNT' | translate }}
+        <a href="#" (click)="$event.preventDefault(); openRegister()">{{ 'AUTH.LOGIN.REGISTER_LINK' | translate }}</a>
+      </div>
+    }
+  </form>
+</p-dialog>

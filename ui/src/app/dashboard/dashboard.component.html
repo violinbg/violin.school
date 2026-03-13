@@ -1,0 +1,42 @@
+<div class="dashboard">
+  <vs-app-header
+    titleKey="APP.TITLE"
+    logoIcon="pi pi-graduation-cap"
+    [username]="auth.currentUser()?.full_name ?? null"
+    [actions]="headerActions"
+    (actionClick)="onHeaderAction($event)"
+  />
+
+  <main class="dashboard__content">
+
+    <div class="greeting">
+      <h1 class="greeting__title">{{ 'DASHBOARD.GREETING' | translate:{name: auth.currentUser()?.full_name} }}</h1>
+      <p class="greeting__subtitle">{{ 'DASHBOARD.SUBTITLE' | translate }}</p>
+    </div>
+
+    <div class="dash-row dash-row--links">
+      <div class="quick-link" (click)="navigateTo('/users')" role="button" tabindex="0"
+        (keydown.enter)="navigateTo('/users')" (keydown.space)="navigateTo('/users')">
+        <i class="pi pi-users quick-link__icon"></i>
+        <div>
+          <div class="quick-link__title">{{ 'DASHBOARD.QUICK_USERS_TITLE' | translate }}</div>
+          <div class="quick-link__desc">{{ 'DASHBOARD.QUICK_USERS_DESC' | translate }}</div>
+        </div>
+        <i class="pi pi-arrow-right quick-link__arrow"></i>
+      </div>
+
+      @if (isAdmin) {
+        <div class="quick-link" (click)="navigateTo('/settings/ai')" role="button" tabindex="0"
+          (keydown.enter)="navigateTo('/settings/ai')" (keydown.space)="navigateTo('/settings/ai')">
+          <i class="pi pi-sparkles quick-link__icon"></i>
+          <div>
+            <div class="quick-link__title">{{ 'DASHBOARD.QUICK_AI_SETTINGS_TITLE' | translate }}</div>
+            <div class="quick-link__desc">{{ 'DASHBOARD.QUICK_AI_SETTINGS_DESC' | translate }}</div>
+          </div>
+          <i class="pi pi-arrow-right quick-link__arrow"></i>
+        </div>
+      }
+    </div>
+
+  </main>
+</div>

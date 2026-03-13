@@ -1,0 +1,170 @@
+<p-toast></p-toast>
+
+<div class="ai-settings">
+  <vs-app-header
+    titleKey="APP.TITLE"
+    logoIcon="pi pi-sparkles"
+    [username]="auth.currentUser()?.full_name ?? null"
+    [leftAction]="headerLeftAction"
+    [actions]="headerActions"
+    (actionClick)="onHeaderAction($event)"
+  />
+
+  <main class="ai-settings__body">
+    <div class="header-bar">
+      <h1 class="header-bar__title">{{ 'AI_SETTINGS.TITLE' | translate }}</h1>
+    </div>
+
+    @if (loading()) {
+      <div class="loading-state">
+        <i class="pi pi-spin pi-spinner loading-state__icon"></i>
+        <p>{{ 'AI_SETTINGS.LOADING' | translate }}</p>
+      </div>
+    } @else if (data(); as data) {
+      <p-card styleClass="settings-card" [header]="'AI_SETTINGS.CONFIG_HEADER' | translate">
+        <div class="settings-grid">
+          <div class="form-item">
+            <label>{{ 'AI_SETTINGS.BASE_URL' | translate }}</label>
+            <input
+              pInputText
+              [ngModel]="editBaseUrl()"
+              (ngModelChange)="editBaseUrl.set($event)"
+              [disabled]="saving()"
+            />
+          </div>
+
+          <div class="form-item">
+            <label>{{ 'AI_SETTINGS.TOKEN' | translate }}</label>
+            <input
+              pInputText
+              type="password"
+              [placeholder]="data.settings.has_token ? ('AI_SETTINGS.TOKEN_PLACEHOLDER_SET' | translate) : ('AI_SETTINGS.TOKEN_PLACEHOLDER_NEW' | translate)"
+              [ngModel]="editToken()"
+              (ngModelChange)="editToken.set($event)"
+              [disabled]="saving()"
+            />
+          </div>
+
+          <div class="form-item form-item--small">
+            <label>{{ 'AI_SETTINGS.GLOBAL_LIMIT' | translate }}</label>
+            <p-inputNumber
+              [ngModel]="editGlobalLimit()"
+              (ngModelChange)="editGlobalLimit.set($event)"
+              mode="currency"
+              currency="USD"
+              [minFractionDigits]="2"
+              [maxFractionDigits]="2"
+              [min]="0"
+              [showButtons]="true"
+              [disabled]="saving()"
+            />
+          </div>
+
+          <div class="form-item form-item--small">
+            <label>{{ 'AI_SETTINGS.DEFAULT_USER_LIMIT' | translate }}</label>
+            <p-inputNumber
+              [ngModel]="editDefaultUserLimit()"
+              (ngModelChange)="editDefaultUserLimit.set($event)"
+              mode="currency"
+              currency="USD"
+              [minFractionDigits]="2"
+              [maxFractionDigits]="2"
+              [min]="0"
+              [showButtons]="true"
+              [disabled]="saving()"
+            />
+          </div>
+        </div>
+
+        <div class="settings-footer">
+          @if (isDirty()) {
+            <span class="settings-footer__hint">
+              <i class="pi pi-circle-fill"></i>
+              {{ 'AI_SETTINGS.UNSAVED_HINT' | translate }}
+            </span>
+          }
+
+          <p-button
+            [label]="'AI_SETTINGS.TEST_TOKEN' | translate"
+            icon="pi pi-check-circle"
+            size="small"
+            severity="secondary"
+            [loading]="testing()"
+            [disabled]="testing() || saving()"
+            (onClick)="testToken()"
+          />
+
+          <p-button
+            [label]="'AI_SETTINGS.SAVE' | translate"
+            icon="pi pi-save"
+            size="small"
+            [loading]="saving()"
+            [disabled]="!isDirty() || saving()"
+            (onClick)="save()"
+          />
+        </div>
+      </p-card>
+
+      <p-card styleClass="usage-card" [header]="'AI_SETTINGS.USAGE_HEADER' | translate">
+        <div class="usage-summary">
+          <div class="usage-kpi">
+            <div class="usage-kpi__label">{{ 'AI_SETTINGS.GLOBAL_COST' | translate }}</div>
+            <div class="usage-kpi__value">{{ formatUsdCostFromTicks(data.usage.global_cost_usd_ticks) }}</div>
+          </div>
+          <div class="usage-kpi">
+            <div class="usage-kpi__label">{{ 'AI_SETTINGS.GLOBAL_TOKENS' | translate }}</div>
+            <div class="usage-kpi__value">{{ formatTicks(data.usage.global_total_tokens) }}</div>
+          </div>
+        </div>
+
+        <p-table [value]="data.usage.users" [tableStyle]="{ 'min-width': '48rem' }" responsiveLayout="scroll" styleClass="p-datatable-sm">
+          <ng-template pTemplate="header">
+            <tr>
+              <th>{{ 'AI_SETTINGS.COL_USER' | translate }}</th>
+              <th>{{ 'AI_SETTINGS.COL_COST' | translate }}</th>
+              <th>{{ 'AI_SETTINGS.COL_TOKENS' | translate }}</th>
+              <th>{{ 'AI_SETTINGS.COL_EFFECTIVE_LIMIT' | translate }}</th>
+              <th>{{ 'AI_SETTINGS.COL_OVERRIDE' | translate }}</th>
+            </tr>
+          </ng-template>
+          <ng-template pTemplate="body" let-user>
+            <tr>
+              <td>
+                <div class="user-cell">
+                  <span class="user-cell__name">{{ user.full_name }}</span>
+                  <span class="user-cell__username">@{{ user.username }}</span>
+                </div>
+              </td>
+              <td>{{ formatUsdCostFromTicks(user.cost_usd_ticks) }}</td>
+              <td>{{ formatTicks(user.total_tokens) }}</td>
+              <td>{{ formatUsdFromTicks(user.effective_limit_usd_ticks) }}</td>
+              <td>
+                <div class="override-cell">
+                  <p-inputNumber
+                    [ngModel]="resolveOverride(user.user_id)"
+                    (ngModelChange)="setOverride(user.user_id, $event)"
+                    mode="currency"
+                    currency="USD"
+                    [minFractionDigits]="2"
+                    [maxFractionDigits]="2"
+                    [min]="0"
+                    [showButtons]="true"
+                    [disabled]="saving()"
+                  />
+                  <p-button
+                    icon="pi pi-times"
+                    size="small"
+                    severity="secondary"
+                    [text]="true"
+                    [disabled]="saving()"
+                    (onClick)="clearOverride(user.user_id)"
+                  />
+                </div>
+              </td>
+            </tr>
+          </ng-template>
+        </p-table>
+      </p-card>
+    }
+  </main>
+</div>

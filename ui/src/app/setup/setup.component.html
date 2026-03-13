@@ -1,0 +1,83 @@
+<div class="setup-page">
+  <div class="setup-card">
+    <div class="setup-card__header">
+      <i class="pi pi-lock setup-card__icon"></i>
+      <h1 class="setup-card__title">{{ 'SETUP.TITLE' | translate }}</h1>
+      <p class="setup-card__subtitle">{{ 'SETUP.SUBTITLE' | translate }}</p>
+    </div>
+
+    <form class="setup-card__form" (ngSubmit)="submit()" #f="ngForm">
+      @if (error()) {
+        <p-message severity="error" [text]="error()" styleClass="w-full mb-2" />
+      }
+
+      <div class="field">
+        <label for="fullName">{{ 'SETUP.FULL_NAME' | translate }}</label>
+        <input
+          pInputText
+          id="fullName"
+          [(ngModel)]="fullName"
+          name="fullName"
+          [placeholder]="'SETUP.FULL_NAME_PLACEHOLDER' | translate"
+          required
+          class="w-full"
+        />
+      </div>
+
+      <div class="field">
+        <label for="username">{{ 'SETUP.USERNAME' | translate }}</label>
+        <input
+          pInputText
+          id="username"
+          [(ngModel)]="username"
+          name="username"
+          [placeholder]="'SETUP.USERNAME_PLACEHOLDER' | translate"
+          required
+          minlength="3"
+          class="w-full"
+        />
+      </div>
+
+      <div class="field">
+        <label for="password">{{ 'SETUP.PASSWORD' | translate }}</label>
+        <p-password
+          inputId="password"
+          [(ngModel)]="password"
+          name="password"
+          [placeholder]="'SETUP.PASSWORD_PLACEHOLDER' | translate"
+          [toggleMask]="true"
+          [feedback]="true"
+          inputStyleClass="w-full"
+          required
+        />
+      </div>
+
+      <div class="field">
+        <label for="confirmPassword">{{ 'SETUP.CONFIRM_PASSWORD' | translate }}</label>
+        <p-password
+          inputId="confirmPassword"
+          [(ngModel)]="confirmPassword"
+          name="confirmPassword"
+          [placeholder]="'SETUP.CONFIRM_PASSWORD_PLACEHOLDER' | translate"
+          [toggleMask]="true"
+          [feedback]="false"
+          inputStyleClass="w-full"
+          required
+        />
+        @if (passwordMismatch) {
+          <small class="field__error">{{ 'SETUP.PASSWORDS_MISMATCH' | translate }}</small>
+        }
+      </div>
+
+      <p-button
+        type="submit"
+        [label]="'SETUP.SUBMIT' | translate"
+        icon="pi pi-check"
+        iconPos="right"
+        styleClass="w-full"
+        [loading]="loading()"
+        [disabled]="passwordMismatch || !username || !fullName || !password"
+      />
+    </form>
+  </div>
+</div>

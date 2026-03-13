@@ -1,0 +1,134 @@
+:host {
+  display: block;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem 2rem;
+  background: color-mix(in srgb, var(--p-surface-0) 84%, transparent);
+  border-bottom: 1px solid var(--p-surface-200);
+  box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+  backdrop-filter: saturate(140%) blur(10px);
+  -webkit-backdrop-filter: saturate(140%) blur(10px);
+
+  @media (prefers-color-scheme: dark) {
+    background: color-mix(in srgb, var(--p-surface-900) 90%, transparent);
+    border-bottom-color: var(--p-surface-700);
+    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+  }
+
+  &--static {
+    position: static;
+  }
+
+  &__leading {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+
+  &__brand {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--p-text-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 0;
+
+    i {
+      color: var(--p-primary-color);
+      flex-shrink: 0;
+    }
+  }
+
+  &__title {
+    white-space: nowrap;
+  }
+
+  &__spacer {
+    flex: 1;
+  }
+
+  &__user {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.875rem;
+    color: var(--p-text-muted-color);
+    white-space: nowrap;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+}
+
+.lang-option {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+
+  &__flag {
+    font-family: 'Noto Color Emoji - Flags Only', sans-serif;
+    font-size: 1.1em;
+    line-height: 1;
+  }
+}
+
+@media (max-width: 720px) {
+  .app-header {
+    flex-wrap: wrap;
+    row-gap: 0.65rem;
+    padding: 0.75rem 1rem;
+
+    &__brand {
+      font-size: 0.95rem;
+    }
+
+    &__user {
+      display: none;
+    }
+
+    &__actions {
+      width: 100%;
+      justify-content: flex-end;
+    }
+  }
+}
+
+@media (max-width: 420px) {
+  .app-header {
+    &__brand {
+      font-size: 0.9rem;
+      gap: 0.35rem;
+    }
+
+    &__actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.5rem;
+    }
+
+    &__actions--single {
+      grid-template-columns: 1fr;
+    }
+
+    &__actions > p-button {
+      width: 100%;
+    }
+  }
+
+  :host ::ng-deep .app-header__actions > p-button .p-button {
+    width: 100%;
+    justify-content: center;
+  }
+}

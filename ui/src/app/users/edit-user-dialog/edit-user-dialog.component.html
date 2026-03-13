@@ -1,0 +1,76 @@
+<p-dialog
+  [header]="'EDIT_USER_DIALOG.HEADER' | translate"
+  [visible]="visible"
+  (visibleChange)="visibleChange.emit($event)"
+  [modal]="true"
+  [style]="{ width: '100%', maxWidth: '400px' }"
+  [closable]="true"
+>
+  <div class="dialog-form" *ngIf="user">
+    <p class="user-info">{{ 'EDIT_USER_DIALOG.EDITING' | translate:{username: user.username} }}</p>
+
+    <div class="form-field">
+      <label for="eu-fullName">{{ 'EDIT_USER_DIALOG.FULL_NAME' | translate }}</label>
+      <input
+        pInputText
+        id="eu-fullName"
+        [ngModel]="form.get('full_name')?.value"
+        (ngModelChange)="form.get('full_name')?.setValue($event)"
+        class="w-full"
+        type="text"
+      />
+      <small class="error" *ngIf="form.get('full_name')?.invalid && form.get('full_name')?.touched">
+        {{ 'EDIT_USER_DIALOG.FULL_NAME_ERROR' | translate }}
+      </small>
+    </div>
+
+    <div class="form-field">
+      <label for="eu-role">{{ 'EDIT_USER_DIALOG.ROLE' | translate }}</label>
+      <p-select
+        inputId="eu-role"
+        [options]="roles"
+        [ngModel]="form.get('role')?.value"
+        (ngModelChange)="form.get('role')?.setValue($event)"
+        optionLabel="label"
+        optionValue="value"
+        styleClass="w-full"
+        [disabled]="isSelf"
+        appendTo="body"
+      />
+      @if (isSelf) {
+        <small class="text-muted">{{ 'EDIT_USER_DIALOG.ROLE_DISABLED_NOTE' | translate }}</small>
+      }
+    </div>
+
+    <div class="form-field">
+      <label for="eu-password">{{ 'EDIT_USER_DIALOG.PASSWORD' | translate }}</label>
+      <input
+        pInputText
+        id="eu-password"
+        [ngModel]="form.get('password')?.value"
+        (ngModelChange)="form.get('password')?.setValue($event)"
+        class="w-full"
+        type="password"
+        [placeholder]="'EDIT_USER_DIALOG.PASSWORD_PLACEHOLDER' | translate"
+      />
+      <small class="error" *ngIf="form.get('password')?.invalid && form.get('password')?.touched">
+        {{ 'EDIT_USER_DIALOG.PASSWORD_ERROR' | translate }}
+      </small>
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <p-button
+      [label]="'EDIT_USER_DIALOG.CANCEL' | translate"
+      icon="pi pi-times"
+      [text]="true"
+      (onClick)="close()"
+    />
+    <p-button
+      [label]="'EDIT_USER_DIALOG.UPDATE' | translate"
+      icon="pi pi-check"
+      [disabled]="!form.valid"
+      (onClick)="update()"
+    />
+  </ng-template>
+</p-dialog>

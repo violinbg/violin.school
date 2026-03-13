@@ -1,0 +1,52 @@
+// PrimeIcons
+@import 'primeicons/primeicons.css';
+
+// Noto Color Emoji — open source (OFL) color emoji font for cross-platform flag rendering
+
+// @font-face {
+//   font-family: 'Noto Color Emoji';
+//   font-style: normal;
+//   font-weight: 400;
+//   font-display: swap;
+//   src: url('/fonts/noto-color-emoji.ttf') format('truetype');
+// }
+
+// smaller subset of Noto Color Emoji containing only flag glyphs, to reduce font size and improve loading performance
+@font-face {
+  font-family: 'Noto Color Emoji - Flags Only';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/noto-color-emoji-flags-only.ttf') format('truetype');
+}
+// ----
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  font-family: var(--p-font-family, system-ui, -apple-system, sans-serif);
+  background-color: var(--p-surface-0);
+  color: var(--p-text-color);
+}
+
+// Utility classes
+.w-full {
+  width: 100% !important;
+}
+
+// PrimeNG p-password component full width fix
+p-password {
+  width: 100%;
+  display: block;
+
+  .p-password {
+    width: 100%;
+    display: flex;
+  }
+}

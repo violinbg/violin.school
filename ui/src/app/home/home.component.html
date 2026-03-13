@@ -1,0 +1,91 @@
+<div class="home">
+  <vs-app-header
+    titleKey="APP.TITLE"
+    logoIcon="pi pi-graduation-cap"
+    [username]="headerUsername"
+    [actions]="headerActions"
+    (actionClick)="onHeaderAction($event)"
+  />
+
+  <section class="hero">
+    <p class="hero__eyebrow">
+      <i class="pi pi-bolt"></i>
+      {{ 'HOME.EYEBROW' | translate }}
+    </p>
+
+    <h1 class="hero__title">
+      {{ 'HOME.HERO_TITLE_LINE1' | translate }}<br />
+      <span>{{ 'HOME.HERO_TITLE_HIGHLIGHT' | translate }}</span>
+    </h1>
+
+    <p class="hero__subtitle">
+      {{ 'HOME.HERO_SUBTITLE' | translate }}
+    </p>
+
+    <div class="hero__actions">
+      @if (auth.isLoggedIn()) {
+        <p-button [label]="'HOME.GO_TO_DASHBOARD' | translate" icon="pi pi-th-large" iconPos="left" size="large" (onClick)="goToDashboard()" />
+      } @else {
+        <p-button [label]="'HOME.GET_STARTED' | translate" icon="pi pi-arrow-right" iconPos="left" size="large" (onClick)="showLoginDialog.set(true)" />
+      }
+      <p-button [label]="'HOME.LEARN_MORE' | translate" icon="pi pi-info-circle" severity="secondary" [outlined]="true" size="large" (onClick)="showLearnMore()" />
+    </div>
+  </section>
+
+  <section class="features">
+    <div class="features__grid">
+      @for (feature of features; track feature.icon) {
+        <div
+          class="feature-card"
+          [class.feature-card--clickable]="feature.route"
+          [class.feature-card--coming-soon]="feature.comingSoon"
+          [attr.role]="feature.route ? 'button' : null"
+          [attr.tabindex]="feature.route ? '0' : null"
+          (click)="onFeatureClick(feature.route)"
+          (keydown)="onFeatureKeydown($event, feature.route)"
+        >
+          <div class="feature-card__icon">
+            <i [class]="feature.icon"></i>
+          </div>
+          <h3 class="feature-card__title">{{ feature.titleKey | translate }}</h3>
+          <p class="feature-card__description">{{ feature.descriptionKey | translate }}</p>
+          @if (feature.route) {
+            <span class="feature-card__cta">{{ 'HOME.TRY_IT' | translate }} <i class="pi pi-arrow-right"></i></span>
+          }
+          @if (feature.comingSoon) {
+            <span class="feature-card__badge">
+              <p-tag [value]="'HOME.COMING_SOON' | translate" severity="secondary" />
+            </span>
+          }
+        </div>
+      }
+    </div>
+  </section>
+
+  <footer class="status-bar">
+    <i class="pi pi-check-circle"></i>
+    <span>{{ 'APP.SYSTEM_OPERATIONAL' | translate }}</span>
+    <span>·</span>
+    <span>{{ 'APP.VERSION' | translate }}</span>
+    <span>© Violin Iliev</span>
+  </footer>
+</div>
+
+@if (showLoginDialog()) {
+  <vs-login-dialog
+    (closed)="showLoginDialog.set(false)"
+    (registerRequested)="showRegisterDialog.set(true)" />
+}
+
+@if (showRegisterDialog()) {
+  <vs-register-dialog
+    [visible]="showRegisterDialog()"
+    (visibleChange)="showRegisterDialog.set($event)"
+    (registered)="goToDashboard()" />
+}
+
+@if (showAboutDialog()) {
+  <vs-about-dialog (closed)="showAboutDialog.set(false)" />
+}
+
+<p-toast />

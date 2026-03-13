@@ -1,0 +1,48 @@
+.about-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+:host ::ng-deep .p-dialog-footer {
+  padding-top: 1.5rem;
+}
+
+.about-section {
+  h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: var(--primary-color);
+
+    i {
+      font-size: 1.125rem;
+    }
+  }
+
+  p {
+    margin: 0;
+    line-height: 1.6;
+    color: var(--text-color);
+  }
+
+  ul {
+    margin: 0;
+    padding-left: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+
+    li {
+      line-height: 1.6;
+      color: var(--text-color);
+
+      strong {
+        color: var(--text-color-emphasis);
+      }
+    }
+  }
+}

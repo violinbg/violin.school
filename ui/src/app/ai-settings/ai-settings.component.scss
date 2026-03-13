@@ -1,0 +1,151 @@
+:host {
+  display: block;
+}
+
+.ai-settings {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--p-surface-50);
+
+  @media (prefers-color-scheme: dark) {
+    background-color: var(--p-surface-950);
+  }
+
+  &__body {
+    flex: 1;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 1.5rem;
+  }
+}
+
+.header-bar {
+  margin-bottom: 1.25rem;
+
+  &__title {
+    margin: 0;
+    font-size: 1.75rem;
+    font-weight: 700;
+  }
+}
+
+.settings-card {
+  margin-bottom: 1.25rem;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 1rem;
+
+  @media (max-width: 900px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.form-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+
+  label {
+    font-size: 0.85rem;
+    color: var(--p-text-muted-color);
+    font-weight: 500;
+  }
+
+  input {
+    width: 100%;
+  }
+
+  &--small {
+    max-width: 360px;
+  }
+}
+
+.cost-help {
+  font-size: 0.78rem;
+  color: var(--p-text-muted-color);
+}
+
+.settings-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--p-surface-200);
+
+  @media (prefers-color-scheme: dark) {
+    border-top-color: var(--p-surface-700);
+  }
+
+  &__hint {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--p-text-muted-color);
+    margin-right: auto;
+  }
+}
+
+.usage-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(160px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.usage-kpi {
+  border: 1px solid var(--p-surface-200);
+  border-radius: 0.5rem;
+  padding: 0.8rem;
+
+  @media (prefers-color-scheme: dark) {
+    border-color: var(--p-surface-700);
+  }
+
+  &__label {
+    color: var(--p-text-muted-color);
+    font-size: 0.8rem;
+    margin-bottom: 0.2rem;
+  }
+
+  &__value {
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+}
+
+.user-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+
+  &__name {
+    font-weight: 600;
+  }
+
+  &__username {
+    font-size: 0.8rem;
+    color: var(--p-text-muted-color);
+  }
+}
+
+.override-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.loading-state {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--p-text-muted-color);
+  padding: 2rem 0;
+}

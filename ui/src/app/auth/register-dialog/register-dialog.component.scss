@@ -1,0 +1,39 @@
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+
+  label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--p-text-muted-color);
+  }
+}
+
+.captcha-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  .captcha-question {
+    font-size: 1rem;
+    font-weight: 600;
+    background: var(--p-surface-100);
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--p-border-radius);
+    flex: 1;
+    text-align: center;
+  }
+
+  .captcha-input {
+    width: 80px;
+    text-align: center;
+  }
+}

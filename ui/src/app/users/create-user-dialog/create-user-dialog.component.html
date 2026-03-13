@@ -1,0 +1,84 @@
+<p-dialog
+  [header]="'CREATE_USER_DIALOG.HEADER' | translate"
+  [visible]="visible"
+  (visibleChange)="visibleChange.emit($event)"
+  [modal]="true"
+  [style]="{ width: '100%', maxWidth: '400px' }"
+  [closable]="true"
+>
+  <div class="dialog-form">
+    <div class="form-field">
+      <label for="cu-username">{{ 'CREATE_USER_DIALOG.USERNAME' | translate }}</label>
+      <input
+        pInputText
+        id="cu-username"
+        [ngModel]="form.get('username')?.value"
+        (ngModelChange)="form.get('username')?.setValue($event)"
+        class="w-full"
+        type="text"
+      />
+      @if (form.get('username')?.invalid && form.get('username')?.touched) {
+        <small class="error">{{ 'CREATE_USER_DIALOG.USERNAME_ERROR' | translate }}</small>
+      }
+    </div>
+
+    <div class="form-field">
+      <label for="cu-fullName">{{ 'CREATE_USER_DIALOG.FULL_NAME' | translate }}</label>
+      <input
+        pInputText
+        id="cu-fullName"
+        [ngModel]="form.get('full_name')?.value"
+        (ngModelChange)="form.get('full_name')?.setValue($event)"
+        class="w-full"
+        type="text"
+      />
+      @if (form.get('full_name')?.invalid && form.get('full_name')?.touched) {
+        <small class="error">{{ 'CREATE_USER_DIALOG.FULL_NAME_ERROR' | translate }}</small>
+      }
+    </div>
+
+    <div class="form-field">
+      <label for="cu-password">{{ 'CREATE_USER_DIALOG.PASSWORD' | translate }}</label>
+      <input
+        pInputText
+        id="cu-password"
+        [ngModel]="form.get('password')?.value"
+        (ngModelChange)="form.get('password')?.setValue($event)"
+        class="w-full"
+        type="password"
+      />
+      @if (form.get('password')?.invalid && form.get('password')?.touched) {
+        <small class="error">{{ 'CREATE_USER_DIALOG.PASSWORD_ERROR' | translate }}</small>
+      }
+    </div>
+
+    <div class="form-field">
+      <label for="cu-role">{{ 'CREATE_USER_DIALOG.ROLE' | translate }}</label>
+      <p-select
+        inputId="cu-role"
+        [options]="roles"
+        [ngModel]="form.get('role')?.value"
+        (ngModelChange)="form.get('role')?.setValue($event)"
+        optionLabel="label"
+        optionValue="value"
+        styleClass="w-full"
+        appendTo="body"
+      />
+    </div>
+  </div>
+
+  <ng-template pTemplate="footer">
+    <p-button
+      [label]="'CREATE_USER_DIALOG.CANCEL' | translate"
+      icon="pi pi-times"
+      [text]="true"
+      (onClick)="close()"
+    />
+    <p-button
+      [label]="'CREATE_USER_DIALOG.CREATE' | translate"
+      icon="pi pi-check"
+      [disabled]="!form.valid"
+      (onClick)="create()"
+    />
+  </ng-template>
+</p-dialog>

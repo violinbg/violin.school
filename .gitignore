@@ -1,0 +1,18 @@
+# Go
+violin.school.exe
+
+# Database
+violin.school.db
+violin.school.db-wal
+violin.school.db-shm
+
+# Angular (ui/.gitignore handles node_modules etc.)
+ui/dist/
+
+# Node (root dev tools)
+node_modules/
+
+# IDE
+.idea/
+*.swp
+*.swo
