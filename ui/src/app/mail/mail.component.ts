@@ -151,6 +151,11 @@ export class MailComponent implements OnInit, OnDestroy {
   async createConversation(): Promise<void> {
     if (this.folder() === 'trash' || this.creatingConversation() || this.isStreaming()) return;
     const content = this.composeMessage().trim();
+    const subject = this.composeSubject().trim();
+    if (!subject) {
+      this.showError(this.translate.instant('MAIL.COMPOSE_SUBJECT_REQUIRED'));
+      return;
+    }
     if (!content) {
       this.showError(this.translate.instant('MAIL.COMPOSE_MESSAGE_REQUIRED'));
       return;
@@ -158,7 +163,6 @@ export class MailComponent implements OnInit, OnDestroy {
 
     this.creatingConversation.set(true);
     const recipient = this.selectedRecipient();
-    const subject = this.composeSubject().trim();
     const summary = this.buildSnippet(content, 240);
     try {
       const conversation = await this.communication.createConversation({

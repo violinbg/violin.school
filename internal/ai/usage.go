@@ -95,6 +95,13 @@ type RecordUsageInput struct {
 	RequestID      string
 }
 
+type GenerateConversationSubjectInput struct {
+	UserID   string
+	Locale   string
+	Messages []ChatCompletionMessage
+	MaxChars int
+}
+
 type BudgetExceededError struct {
 	Message string
 }
@@ -380,6 +387,71 @@ func (s *Service) RecordUsage(ctx context.Context, input RecordUsageInput) error
 	return err
 }
 
+func (s *Service) GenerateConversationSubject(ctx context.Context, input GenerateConversationSubjectInput) (string, error) {
+	userID := strings.TrimSpace(input.UserID)
+	if userID == "" {
+		return "", errors.New("user_id is required")
+	}
+	if len(input.Messages) == 0 {
+		return "", errors.New("at least one message is required")
+	}
+	maxChars := input.MaxChars
+	if maxChars <= 0 {
+		maxChars = 40
+	}
+	if maxChars > 120 {
+		maxChars = 120
+	}
+
+	if _, err := s.CheckBudgetBeforeCall(ctx, userID); err != nil {
+		return "", err
+	}
+
+	baseURL, token, err := s.ResolveStreamingConfig(ctx)
+	if err != nil {
+		return "", err
+	}
+
+	languageName := localeToLanguageName(input.Locale)
+	systemPrompt := fmt.Sprintf("You generate concise email subject lines for school communications. Return only the subject text in %s. Keep it at most %d characters. No quotation marks. Avoid trailing punctuation.", languageName, maxChars)
+	messages := append([]ChatCompletionMessage{
+		{
+			Role:    "system",
+			Content: systemPrompt,
+		},
+	}, input.Messages...)
+
+	result, err := s.client.ChatCompletion(ctx, ChatCompletionRequest{
+		BaseURL:   baseURL,
+		Token:     token,
+		Model:     "grok-3-mini",
+		Messages:  messages,
+		MaxTokens: 64,
+	})
+	if err != nil {
+		return "", err
+	}
+
+	subject := normalizeSubject(result.Content, maxChars)
+	if subject == "" {
+		return "", errors.New("subject generation returned empty output")
+	}
+
+	if err := s.RecordUsage(ctx, RecordUsageInput{
+		UserID:         userID,
+		Provider:       "xai",
+		Model:          fallback(result.Usage.Model, "grok-3-mini"),
+		RequestScope:   "communication_subject",
+		TotalTokens:    result.Usage.TotalTokens,
+		CostInUsdTicks: result.Usage.CostInUsdTicks,
+		RequestID:      result.Usage.RequestID,
+	}); err != nil {
+		return "", err
+	}
+
+	return subject, nil
+}
+
 func (s *Service) listUserLimitOverrides(ctx context.Context) ([]UserLimit, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT l.user_id, u.username, u.full_name, l.monthly_limit_usd_ticks
@@ -468,4 +540,49 @@ func fallback(value, fallbackValue string) string {
 		return fallbackValue
 	}
 	return trimmed
+}
+
+func localeToLanguageName(locale string) string {
+	languageCode := strings.ToLower(strings.TrimSpace(locale))
+	if languageCode == "" {
+		return "English"
+	}
+	if strings.Contains(languageCode, "-") {
+		languageCode = strings.SplitN(languageCode, "-", 2)[0]
+	}
+	switch languageCode {
+	case "bg":
+		return "Bulgarian"
+	case "es":
+		return "Spanish"
+	case "ja":
+		return "Japanese"
+	case "ko":
+		return "Korean"
+	case "zh":
+		return "Chinese"
+	default:
+		return "English"
+	}
+}
+
+func normalizeSubject(value string, maxChars int) string {
+	subject := strings.Join(strings.Fields(strings.TrimSpace(value)), " ")
+	subject = strings.Trim(subject, " \t\n\r\"'“”‘’`")
+	subject = strings.TrimRight(subject, " .!?:;")
+	if subject == "" {
+		return ""
+	}
+	return truncateRunes(subject, maxChars)
+}
+
+func truncateRunes(value string, maxChars int) string {
+	if maxChars <= 0 {
+		return value
+	}
+	runes := []rune(value)
+	if len(runes) <= maxChars {
+		return value
+	}
+	return strings.TrimSpace(string(runes[:maxChars]))
 }

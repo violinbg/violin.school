@@ -36,7 +36,7 @@ func registerCommunicationRoutes(protected *gin.RouterGroup, db *sql.DB) {
 	protected.POST("/communications/conversations/:conversationID/archive", handleArchiveConversation(repository))
 	protected.POST("/communications/conversations/:conversationID/restore", handleRestoreConversation(repository))
 	protected.DELETE("/communications/conversations/:conversationID", handleDeleteConversation(repository))
-	protected.POST("/communications/conversations/:conversationID/convert-to-mail", handleConvertConversationToMail(repository))
+	protected.POST("/communications/conversations/:conversationID/convert-to-mail", handleConvertConversationToMail(repository, db))
 	protected.GET("/communications/conversations/:conversationID/messages/:messageID/stream", handleStreamMessage(repository, streamProvider, db))
 }
 
@@ -105,13 +105,20 @@ func handleCreateConversation(repository *dean.Repository) gin.HandlerFunc {
 			}
 		}
 
+		channelType := firstNonEmpty(strings.TrimSpace(req.ChannelType), "mail_thread")
+		title := strings.TrimSpace(req.Title)
+		if channelType == "mail_thread" && title == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "title is required for mail conversations"})
+			return
+		}
+
 		conversation, err := repository.CreateConversation(c.Request.Context(), dean.CreateConversationInput{
 			UserID:        userID,
-			ChannelType:   firstNonEmpty(strings.TrimSpace(req.ChannelType), "mail_thread"),
+			ChannelType:   channelType,
 			ContextKey:    strings.TrimSpace(req.ContextKey),
 			RecipientKind: firstNonEmpty(strings.TrimSpace(req.RecipientKind), "dean_office"),
 			RecipientID:   firstNonEmpty(strings.TrimSpace(req.RecipientID), "dean.taskford"),
-			Title:         strings.TrimSpace(req.Title),
+			Title:         title,
 			Summary:       strings.TrimSpace(req.Summary),
 			CreatedBy:     userID,
 		})
@@ -237,7 +244,7 @@ func handlePostMessage(repository *dean.Repository) gin.HandlerFunc {
 	}
 }
 
-func handleConvertConversationToMail(repository *dean.Repository) gin.HandlerFunc {
+func handleConvertConversationToMail(repository *dean.Repository, db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, ok := deanOfficeUserID(c)
 		if !ok {
@@ -262,6 +269,26 @@ func handleConvertConversationToMail(repository *dean.Repository) gin.HandlerFun
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not convert conversation"})
 			return
+		}
+
+		if shouldGenerateConversationSubject(conversation.Title) {
+			if usageService, err := aiService(db); err == nil {
+				contextMessages, err := repository.ListRecentMessagesForConversation(c.Request.Context(), conversationID, 20)
+				if err == nil {
+					userLanguage := loadUserLanguage(c.Request.Context(), db, userID)
+					subject, err := usageService.GenerateConversationSubject(c.Request.Context(), ai.GenerateConversationSubjectInput{
+						UserID:   userID,
+						Locale:   userLanguage,
+						Messages: buildSubjectGenerationPromptMessages(conversation, contextMessages),
+						MaxChars: 40,
+					})
+					if err == nil {
+						if updatedConversation, err := repository.UpdateConversationTitleForUser(c.Request.Context(), conversationID, userID, subject, userID); err == nil {
+							conversation = updatedConversation
+						}
+					}
+				}
+			}
 		}
 
 		c.JSON(http.StatusOK, gin.H{"conversation": conversation})
@@ -659,6 +686,61 @@ func isDeanStreamAbortError(err error) bool {
 	return strings.Contains(lowered, "broken pipe") ||
 		strings.Contains(lowered, "connection reset by peer") ||
 		strings.Contains(lowered, "client disconnected")
+}
+
+func shouldGenerateConversationSubject(title string) bool {
+	normalized := strings.ToLower(strings.TrimSpace(title))
+	return normalized == "" || normalized == "untitled conversation"
+}
+
+func buildSubjectGenerationPromptMessages(conversation dean.Conversation, messages []dean.Message) []ai.ChatCompletionMessage {
+	parts := make([]string, 0, len(messages)+1)
+	parts = append(parts, fmt.Sprintf("Recipient: %s", firstNonEmpty(conversation.RecipientKind, "dean_office")))
+	for _, message := range messages {
+		content := strings.TrimSpace(message.Content)
+		if content == "" {
+			continue
+		}
+		content = truncateByRuneCount(content, 320)
+		role := "Assistant"
+		if message.Role == "user" {
+			role = "Student"
+		}
+		parts = append(parts, fmt.Sprintf("%s: %s", role, content))
+	}
+	if len(parts) == 1 {
+		parts = append(parts, "Student: General inquiry")
+	}
+	return []ai.ChatCompletionMessage{
+		{
+			Role: "user",
+			Content: "Generate a concise mail subject for this conversation transcript:\n" +
+				truncateByRuneCount(strings.Join(parts, "\n"), 4200),
+		},
+	}
+}
+
+func loadUserLanguage(ctx context.Context, db *sql.DB, userID string) string {
+	var language string
+	if err := db.QueryRowContext(ctx, "SELECT language FROM users WHERE id = ?", userID).Scan(&language); err != nil {
+		return "en"
+	}
+	language = strings.ToLower(strings.TrimSpace(language))
+	if language == "" {
+		return "en"
+	}
+	return language
+}
+
+func truncateByRuneCount(value string, maxRunes int) string {
+	if maxRunes <= 0 {
+		return ""
+	}
+	runes := []rune(value)
+	if len(runes) <= maxRunes {
+		return value
+	}
+	return string(runes[:maxRunes])
 }
 
 func firstNonEmpty(values ...string) string {

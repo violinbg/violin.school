@@ -225,7 +225,7 @@
         [label]="'MAIL.SEND' | translate"
         icon="pi pi-send"
         [loading]="creatingConversation()"
-        [disabled]="creatingConversation() || !composeMessage().trim() || isStreaming()"
+        [disabled]="creatingConversation() || !composeSubject().trim() || !composeMessage().trim() || isStreaming()"
         (onClick)="createConversation()"
       />
     </div>

@@ -38,6 +38,20 @@ type StreamChatCompletionRequest struct {
 	MaxTokens int
 }
 
+type ChatCompletionRequest struct {
+	BaseURL   string
+	Token     string
+	Model     string
+	Messages  []ChatCompletionMessage
+	MaxTokens int
+}
+
+type ChatCompletionResult struct {
+	Content      string
+	FinishReason string
+	Usage        UsageMetrics
+}
+
 type StreamChatCompletionEvent struct {
 	Type         string
 	Delta        string
@@ -268,11 +282,105 @@ func (c *XAIClient) StreamChatCompletion(ctx context.Context, request StreamChat
 	return usage, nil
 }
 
+func (c *XAIClient) ChatCompletion(ctx context.Context, request ChatCompletionRequest) (ChatCompletionResult, error) {
+	ctx, cancel := withDefaultTimeout(ctx, defaultRequestTimeout)
+	defer cancel()
+
+	baseURL := strings.TrimSuffix(strings.TrimSpace(request.BaseURL), "/")
+	if baseURL == "" {
+		return ChatCompletionResult{}, fmt.Errorf("xai base url is required")
+	}
+	if _, err := url.ParseRequestURI(baseURL); err != nil {
+		return ChatCompletionResult{}, fmt.Errorf("invalid xai base url: %w", err)
+	}
+	if strings.TrimSpace(request.Token) == "" {
+		return ChatCompletionResult{}, fmt.Errorf("xai token is empty")
+	}
+	if strings.TrimSpace(request.Model) == "" {
+		return ChatCompletionResult{}, fmt.Errorf("xai model is required")
+	}
+	if len(request.Messages) == 0 {
+		return ChatCompletionResult{}, fmt.Errorf("at least one chat message is required")
+	}
+
+	payload := map[string]interface{}{
+		"model":    request.Model,
+		"messages": request.Messages,
+	}
+	if request.MaxTokens > 0 {
+		payload["max_tokens"] = request.MaxTokens
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return ChatCompletionResult{}, fmt.Errorf("encode completion payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, baseURL+"/chat/completions", bytes.NewReader(body))
+	if err != nil {
+		return ChatCompletionResult{}, fmt.Errorf("create completion request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+request.Token)
+	req.Header.Set("Content-Type", "application/json")
+
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return ChatCompletionResult{}, fmt.Errorf("xai completion request failed: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode >= 400 {
+		responseBody, _ := io.ReadAll(io.LimitReader(res.Body, 4096))
+		return ChatCompletionResult{}, fmt.Errorf("xai completion failed: status=%d body=%s", res.StatusCode, strings.TrimSpace(string(responseBody)))
+	}
+
+	var parsed struct {
+		ID      string `json:"id"`
+		Model   string `json:"model"`
+		Choices []struct {
+			Message struct {
+				Content string `json:"content"`
+			} `json:"message"`
+			FinishReason string `json:"finish_reason"`
+		} `json:"choices"`
+		Usage struct {
+			TotalTokens    int64 `json:"total_tokens"`
+			CostInUsdTicks int64 `json:"cost_in_usd_ticks"`
+		} `json:"usage"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&parsed); err != nil {
+		return ChatCompletionResult{}, fmt.Errorf("parse completion response: %w", err)
+	}
+	if len(parsed.Choices) == 0 {
+		return ChatCompletionResult{}, errors.New("xai completion returned no choices")
+	}
+
+	return ChatCompletionResult{
+		Content:      parsed.Choices[0].Message.Content,
+		FinishReason: parsed.Choices[0].FinishReason,
+		Usage: UsageMetrics{
+			TotalTokens:    parsed.Usage.TotalTokens,
+			CostInUsdTicks: parsed.Usage.CostInUsdTicks,
+			Model:          firstNonEmpty(parsed.Model, request.Model),
+			RequestID:      parsed.ID,
+		},
+	}, nil
+}
+
 func withDefaultTimeout(ctx context.Context, timeout time.Duration) (context.Context, context.CancelFunc) {
 	if _, hasDeadline := ctx.Deadline(); hasDeadline {
 		return ctx, func() {}
 	}
 	return context.WithTimeout(ctx, timeout)
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
 }
 
 func consumeSSEData(body io.Reader, handle func(data string) error) error {

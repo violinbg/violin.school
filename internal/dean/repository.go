@@ -427,6 +427,36 @@ func (r *Repository) ConvertConversationToMailForUser(ctx context.Context, conve
 	return r.GetConversationForUser(ctx, conversationID, userID)
 }
 
+func (r *Repository) UpdateConversationTitleForUser(ctx context.Context, conversationID, userID, title, updatedBy string) (Conversation, error) {
+	if _, err := r.GetConversationForUser(ctx, conversationID, userID); err != nil {
+		return Conversation{}, err
+	}
+
+	now := time.Now().UTC()
+	actor := strings.TrimSpace(updatedBy)
+	if actor == "" {
+		actor = strings.TrimSpace(userID)
+	}
+
+	normalizedTitle := strings.TrimSpace(title)
+	_, err := r.db.ExecContext(
+		ctx,
+		`UPDATE communication_conversations
+		 SET title = ?, updated_by = ?, updated_at = ?
+		 WHERE id = ? AND user_id = ?`,
+		normalizedTitle,
+		actor,
+		now,
+		conversationID,
+		userID,
+	)
+	if err != nil {
+		return Conversation{}, err
+	}
+
+	return r.GetConversationForUser(ctx, conversationID, userID)
+}
+
 func (r *Repository) ArchiveConversationForUser(ctx context.Context, conversationID, userID, updatedBy string) (Conversation, error) {
 	conversation, err := r.GetConversationForUser(ctx, conversationID, userID)
 	if err != nil {
