@@ -17,10 +17,20 @@
     <div class="dash-row dash-row--links">
       <div class="quick-link" (click)="navigateTo('/dean-office')" role="button" tabindex="0"
         (keydown.enter)="navigateTo('/dean-office')" (keydown.space)="navigateTo('/dean-office')">
-        <i class="pi pi-comments quick-link__icon"></i>
+        <i class="pi pi-building-columns quick-link__icon"></i>
         <div>
           <div class="quick-link__title">{{ 'DASHBOARD.QUICK_DEAN_OFFICE_TITLE' | translate }}</div>
           <div class="quick-link__desc">{{ 'DASHBOARD.QUICK_DEAN_OFFICE_DESC' | translate }}</div>
+        </div>
+        <i class="pi pi-arrow-right quick-link__arrow"></i>
+      </div>
+
+      <div class="quick-link" (click)="navigateTo('/mail')" role="button" tabindex="0"
+        (keydown.enter)="navigateTo('/mail')" (keydown.space)="navigateTo('/mail')">
+        <i class="pi pi-envelope quick-link__icon"></i>
+        <div>
+          <div class="quick-link__title">{{ 'DASHBOARD.QUICK_MAIL_TITLE' | translate }}</div>
+          <div class="quick-link__desc">{{ 'DASHBOARD.QUICK_MAIL_DESC' | translate }}</div>
         </div>
         <i class="pi pi-arrow-right quick-link__arrow"></i>
       </div>

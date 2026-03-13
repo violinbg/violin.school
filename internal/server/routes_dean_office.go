@@ -19,7 +19,7 @@ import (
 	"github.com/violinbg/violin.school/internal/dean"
 )
 
-func registerDeanOfficeRoutes(protected *gin.RouterGroup, db *sql.DB) {
+func registerCommunicationRoutes(protected *gin.RouterGroup, db *sql.DB) {
 	repository := dean.NewRepository(db)
 	streamProvider := dean.NewXAIStreamProvider(ai.NewXAIClient(), func(ctx context.Context) (string, string, error) {
 		service, err := aiService(db)
@@ -29,14 +29,15 @@ func registerDeanOfficeRoutes(protected *gin.RouterGroup, db *sql.DB) {
 		return service.ResolveStreamingConfig(ctx)
 	})
 
-	protected.GET("/dean-office/conversations", handleListDeanConversations(repository))
-	protected.POST("/dean-office/conversations", handleCreateDeanConversation(repository))
-	protected.GET("/dean-office/conversations/:conversationID/messages", handleListDeanMessages(repository))
-	protected.POST("/dean-office/conversations/:conversationID/messages", handlePostDeanMessage(repository))
-	protected.GET("/dean-office/conversations/:conversationID/messages/:messageID/stream", handleStreamDeanMessage(repository, streamProvider, db))
+	protected.GET("/communications/conversations", handleListConversations(repository))
+	protected.POST("/communications/conversations", handleCreateConversation(repository))
+	protected.GET("/communications/conversations/:conversationID/messages", handleListMessages(repository))
+	protected.POST("/communications/conversations/:conversationID/messages", handlePostMessage(repository))
+	protected.POST("/communications/conversations/:conversationID/convert-to-mail", handleConvertConversationToMail(repository))
+	protected.GET("/communications/conversations/:conversationID/messages/:messageID/stream", handleStreamMessage(repository, streamProvider, db))
 }
 
-func handleListDeanConversations(repository *dean.Repository) gin.HandlerFunc {
+func handleListConversations(repository *dean.Repository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, ok := deanOfficeUserID(c)
 		if !ok {
@@ -52,7 +53,18 @@ func handleListDeanConversations(repository *dean.Repository) gin.HandlerFunc {
 			return
 		}
 
-		conversations, err := repository.ListConversationsForUser(c.Request.Context(), userID, limit, offset)
+		channelType := firstNonEmpty(strings.TrimSpace(c.Query("channel_type")), "mail_thread")
+		contextKey := strings.TrimSpace(c.Query("context_key"))
+		recipientKind := strings.TrimSpace(c.Query("recipient_kind"))
+
+		conversations, err := repository.ListConversationsForUser(c.Request.Context(), dean.ListConversationsInput{
+			UserID:        userID,
+			ChannelType:   channelType,
+			ContextKey:    contextKey,
+			RecipientKind: recipientKind,
+			Limit:         limit,
+			Offset:        offset,
+		})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not list conversations"})
 			return
@@ -62,10 +74,14 @@ func handleListDeanConversations(repository *dean.Repository) gin.HandlerFunc {
 	}
 }
 
-func handleCreateDeanConversation(repository *dean.Repository) gin.HandlerFunc {
+func handleCreateConversation(repository *dean.Repository) gin.HandlerFunc {
 	type request struct {
-		Title   string `json:"title" binding:"max=200"`
-		Summary string `json:"summary" binding:"max=2000"`
+		ChannelType   string `json:"channel_type"`
+		ContextKey    string `json:"context_key" binding:"max=200"`
+		RecipientKind string `json:"recipient_kind" binding:"max=100"`
+		RecipientID   string `json:"recipient_id" binding:"max=200"`
+		Title         string `json:"title" binding:"max=200"`
+		Summary       string `json:"summary" binding:"max=2000"`
 	}
 
 	return func(c *gin.Context) {
@@ -85,10 +101,14 @@ func handleCreateDeanConversation(repository *dean.Repository) gin.HandlerFunc {
 		}
 
 		conversation, err := repository.CreateConversation(c.Request.Context(), dean.CreateConversationInput{
-			UserID:    userID,
-			Title:     strings.TrimSpace(req.Title),
-			Summary:   strings.TrimSpace(req.Summary),
-			CreatedBy: userID,
+			UserID:        userID,
+			ChannelType:   firstNonEmpty(strings.TrimSpace(req.ChannelType), "mail_thread"),
+			ContextKey:    strings.TrimSpace(req.ContextKey),
+			RecipientKind: firstNonEmpty(strings.TrimSpace(req.RecipientKind), "dean_office"),
+			RecipientID:   firstNonEmpty(strings.TrimSpace(req.RecipientID), "dean.taskford"),
+			Title:         strings.TrimSpace(req.Title),
+			Summary:       strings.TrimSpace(req.Summary),
+			CreatedBy:     userID,
 		})
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not create conversation"})
@@ -99,7 +119,7 @@ func handleCreateDeanConversation(repository *dean.Repository) gin.HandlerFunc {
 	}
 }
 
-func handleListDeanMessages(repository *dean.Repository) gin.HandlerFunc {
+func handleListMessages(repository *dean.Repository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, ok := deanOfficeUserID(c)
 		if !ok {
@@ -144,7 +164,7 @@ func handleListDeanMessages(repository *dean.Repository) gin.HandlerFunc {
 	}
 }
 
-func handlePostDeanMessage(repository *dean.Repository) gin.HandlerFunc {
+func handlePostMessage(repository *dean.Repository) gin.HandlerFunc {
 	type request struct {
 		Content  string `json:"content" binding:"required"`
 		Provider string `json:"provider"`
@@ -199,7 +219,7 @@ func handlePostDeanMessage(repository *dean.Repository) gin.HandlerFunc {
 			return
 		}
 
-		streamURL := fmt.Sprintf("/api/v1/dean-office/conversations/%s/messages/%s/stream", conversationID, assistantMessage.ID)
+		streamURL := fmt.Sprintf("/api/v1/communications/conversations/%s/messages/%s/stream", conversationID, assistantMessage.ID)
 		c.JSON(http.StatusAccepted, gin.H{
 			"user_message":      userMessage,
 			"assistant_message": assistantMessage,
@@ -212,7 +232,38 @@ func handlePostDeanMessage(repository *dean.Repository) gin.HandlerFunc {
 	}
 }
 
-func handleStreamDeanMessage(repository *dean.Repository, streamProvider dean.AssistantStreamProvider, db *sql.DB) gin.HandlerFunc {
+func handleConvertConversationToMail(repository *dean.Repository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, ok := deanOfficeUserID(c)
+		if !ok {
+			return
+		}
+
+		conversationID := strings.TrimSpace(c.Param("conversationID"))
+		if conversationID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "conversation id is required"})
+			return
+		}
+
+		conversation, err := repository.ConvertConversationToMailForUser(c.Request.Context(), conversationID, userID, userID)
+		if errors.Is(err, dean.ErrConversationNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "conversation not found"})
+			return
+		}
+		if errors.Is(err, dean.ErrConversationNotContextChat) {
+			c.JSON(http.StatusConflict, gin.H{"error": "conversation is not a context chat"})
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not convert conversation"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"conversation": conversation})
+	}
+}
+
+func handleStreamMessage(repository *dean.Repository, streamProvider dean.AssistantStreamProvider, db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		userID, ok := deanOfficeUserID(c)
 		if !ok {
@@ -233,6 +284,16 @@ func handleStreamDeanMessage(repository *dean.Repository, streamProvider dean.As
 		}
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load assistant message"})
+			return
+		}
+
+		conversation, err := repository.GetConversationForUser(c.Request.Context(), conversationID, userID)
+		if errors.Is(err, dean.ErrConversationNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "conversation not found"})
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not load conversation"})
 			return
 		}
 
@@ -349,7 +410,7 @@ func handleStreamDeanMessage(repository *dean.Repository, streamProvider dean.As
 			ConversationID:     conversationID,
 			AssistantMessageID: message.ID,
 			Model:              firstNonEmpty(message.Model, "grok-3-mini"),
-			Messages:           buildDeanOfficePromptMessages(contextMessages),
+			Messages:           buildCommunicationPromptMessages(conversation, contextMessages),
 			MaxTokens:          1024,
 		}, func(event dean.AssistantStreamEvent) error {
 			if event.Content != "" {
@@ -445,7 +506,7 @@ func handleStreamDeanMessage(repository *dean.Repository, streamProvider dean.As
 				UserID:         userID,
 				Provider:       firstNonEmpty(message.Provider, "xai"),
 				Model:          firstNonEmpty(finalUsage.Model, message.Model, "unknown"),
-				RequestScope:   "dean_chat",
+				RequestScope:   "communication_chat",
 				TotalTokens:    finalUsage.TotalTokens,
 				CostInUsdTicks: finalUsage.CostInUsdTicks,
 				RequestID:      finalUsage.RequestID,
@@ -458,11 +519,15 @@ func handleStreamDeanMessage(repository *dean.Repository, streamProvider dean.As
 	}
 }
 
-func buildDeanOfficePromptMessages(messages []dean.Message) []ai.ChatCompletionMessage {
+func buildCommunicationPromptMessages(conversation dean.Conversation, messages []dean.Message) []ai.ChatCompletionMessage {
 	out := make([]ai.ChatCompletionMessage, 0, len(messages)+1)
+	systemPrompt := "You are a helpful school communication assistant. Be practical and concise."
+	if conversation.RecipientKind == "dean_office" {
+		systemPrompt = "You are Dean Augustus Taskford (dean.taskford), the dean of this online school. Be helpful, practical, and concise."
+	}
 	out = append(out, ai.ChatCompletionMessage{
 		Role:    "system",
-		Content: "You are Dean Augustus Taskford (dean.taskford), the dean of this online school. Be helpful, practical, and concise.",
+		Content: systemPrompt,
 	})
 
 	for _, message := range messages {

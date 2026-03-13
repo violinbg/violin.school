@@ -1,9 +1,7 @@
-<p-toast></p-toast>
-
 <div class="dean-office">
   <vs-app-header
-    titleKey="APP.TITLE"
-    logoIcon="pi pi-comments"
+    titleKey="DEAN_PLACEHOLDER.TITLE"
+    logoIcon="pi pi-building-columns"
     [username]="auth.currentUser()?.full_name ?? null"
     [leftAction]="headerLeftAction"
     [actions]="headerActions"
@@ -11,117 +9,28 @@
   />
 
   <main class="dean-office__content">
-    <aside class="conversations">
-      <p-card [header]="'DEAN_OFFICE.CONVERSATIONS' | translate">
-        <div class="new-conversation">
-          <input
-            type="text"
-            [placeholder]="'DEAN_OFFICE.NEW_TITLE_PLACEHOLDER' | translate"
-            [ngModel]="conversationTitle()"
-            (ngModelChange)="conversationTitle.set($event)"
-            [disabled]="creatingConversation() || isStreaming()"
-          />
-          <textarea
-            rows="2"
-            [placeholder]="'DEAN_OFFICE.NEW_SUMMARY_PLACEHOLDER' | translate"
-            [ngModel]="conversationSummary()"
-            (ngModelChange)="conversationSummary.set($event)"
-            [disabled]="creatingConversation() || isStreaming()"
-          ></textarea>
-          <p-button
-            [label]="'DEAN_OFFICE.CREATE_CONVERSATION' | translate"
-            icon="pi pi-plus"
-            size="small"
-            [loading]="creatingConversation()"
-            [disabled]="creatingConversation() || isStreaming()"
-            (onClick)="createConversation()"
-          />
-        </div>
+    <p-card [header]="'DEAN_PLACEHOLDER.OVERVIEW_TITLE' | translate">
+      <p>{{ 'DEAN_PLACEHOLDER.OVERVIEW_TEXT' | translate }}</p>
+      <p-button [label]="'DEAN_PLACEHOLDER.OPEN_MAIL' | translate" icon="pi pi-envelope" (onClick)="navigateToMail()" />
+    </p-card>
 
-        @if (loadingConversations()) {
-          <div class="loading-state">
-            <i class="pi pi-spin pi-spinner"></i>
-            <span>{{ 'DEAN_OFFICE.LOADING_CONVERSATIONS' | translate }}</span>
-          </div>
-        } @else if (conversations().length === 0) {
-          <div class="empty-state">{{ 'DEAN_OFFICE.NO_CONVERSATIONS' | translate }}</div>
-        } @else {
-          <div class="conversation-list">
-            @for (conversation of conversations(); track trackConversation($index, conversation)) {
-              <button
-                type="button"
-                class="conversation-item"
-                [class.conversation-item--active]="isSelected(conversation.id)"
-                [disabled]="loadingMessages() || isStreaming()"
-                (click)="selectConversation(conversation.id)"
-              >
-                <div class="conversation-item__title">{{ conversation.title || ('DEAN_OFFICE.UNTITLED' | translate) }}</div>
-                <div class="conversation-item__summary">{{ conversation.summary || ('DEAN_OFFICE.NO_SUMMARY' | translate) }}</div>
-                <div class="conversation-item__meta">{{ formatDate(conversation.last_message_at || conversation.created_at) }}</div>
-              </button>
-            }
-          </div>
-        }
+    <section class="dean-office__cards">
+      <p-card [header]="'DEAN_PLACEHOLDER.CARD_EXPLORE_TITLE' | translate">
+        <p>{{ 'DEAN_PLACEHOLDER.CARD_EXPLORE_TEXT' | translate }}</p>
       </p-card>
-    </aside>
-
-    <section class="chat-pane">
-      <p-card [header]="'DEAN_OFFICE.CHAT' | translate">
-        @if (!selectedConversationId()) {
-          <div class="empty-state">{{ 'DEAN_OFFICE.SELECT_PROMPT' | translate }}</div>
-        } @else if (loadingMessages()) {
-          <div class="loading-state">
-            <i class="pi pi-spin pi-spinner"></i>
-            <span>{{ 'DEAN_OFFICE.LOADING_MESSAGES' | translate }}</span>
-          </div>
-        } @else {
-          <div class="message-list" #messageListContainer>
-            @if (messages().length === 0) {
-              <div class="empty-state">{{ 'DEAN_OFFICE.NO_MESSAGES' | translate }}</div>
-            }
-            @for (message of messages(); track trackMessage($index, message)) {
-              <article class="message-item" [class.message-item--assistant]="message.role === 'assistant'">
-                <div class="message-item__head">
-                  <span class="message-item__role">
-                    {{ (message.role === 'assistant' ? 'DEAN_OFFICE.ROLE_ASSISTANT' : 'DEAN_OFFICE.ROLE_USER') | translate }}
-                  </span>
-                  <span class="message-item__time">{{ formatDate(message.created_at) }}</span>
-                </div>
-                <pre class="message-item__content">{{ message.content || ('DEAN_OFFICE.MESSAGE_PENDING' | translate) }}</pre>
-                @if (message.status === 'error' && message.error_text) {
-                  <div class="message-item__error">{{ message.error_text }}</div>
-                }
-                @if (isStreaming(message.id)) {
-                  <div class="message-item__streaming">
-                    <i class="pi pi-spin pi-spinner"></i>
-                    {{ 'DEAN_OFFICE.STREAMING' | translate }}
-                  </div>
-                }
-              </article>
-            }
-          </div>
-        }
-
-        <div class="composer">
-          <textarea
-            rows="4"
-            [placeholder]="'DEAN_OFFICE.MESSAGE_PLACEHOLDER' | translate"
-            [ngModel]="draftMessage()"
-            (ngModelChange)="draftMessage.set($event)"
-            (keydown.enter)="onComposerEnter($event)"
-            [disabled]="!selectedConversationId() || sendingMessage() || isStreaming()"
-          ></textarea>
-          <div class="composer__actions">
-            <p-button
-              [label]="'DEAN_OFFICE.SEND' | translate"
-              icon="pi pi-send"
-              [loading]="sendingMessage()"
-              [disabled]="!selectedConversationId() || !draftMessage().trim() || sendingMessage() || isStreaming()"
-              (onClick)="sendMessage()"
-            />
-          </div>
-        </div>
+      <p-card [header]="'DEAN_PLACEHOLDER.CARD_JOIN_DROP_TITLE' | translate">
+        <p>{{ 'DEAN_PLACEHOLDER.CARD_JOIN_DROP_TEXT' | translate }}</p>
+      </p-card>
+      <p-card [header]="'DEAN_PLACEHOLDER.CARD_ADVISING_TITLE' | translate">
+        <p>{{ 'DEAN_PLACEHOLDER.CARD_ADVISING_TEXT' | translate }}</p>
       </p-card>
     </section>
   </main>
+
+  <vs-context-chat-bubble
+    contextKey="dean-office-help"
+    recipientKind="dean_office"
+    recipientId="dean.taskford"
+    titleKey="CONTEXT_CHAT.DEAN_HELP_TITLE"
+  />
 </div>

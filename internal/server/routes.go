@@ -22,7 +22,7 @@ func registerRoutes(r *gin.Engine, db *sql.DB) {
 	registerSetupRoutes(api, db)
 	registerAuthRoutes(api, protected, db, captchaStore)
 	registerCoursesRoutes(protected, db)
-	registerDeanOfficeRoutes(protected, db)
+	registerCommunicationRoutes(protected, db)
 	registerUserRoutes(admin, db)
 	registerAdminRoutes(admin, db)
 	registerAIAdminRoutes(admin, db)

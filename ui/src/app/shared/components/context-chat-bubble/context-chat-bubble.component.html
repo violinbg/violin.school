@@ -1,0 +1,82 @@
+<p-toast></p-toast>
+
+<button class="chat-fab" type="button" (click)="toggleOpen()">
+  <i class="pi pi-comment"></i>
+</button>
+
+@if (open()) {
+  <section class="chat-panel" (mousemove)="registerInteraction()" (keydown)="registerInteraction()">
+    <button class="chat-panel__close" type="button" (click)="closePanel()" aria-label="Close">
+      <i class="pi pi-times"></i>
+    </button>
+    <p-card [header]="titleKey | translate">
+      @if (loading()) {
+        <div class="chat-panel__state">{{ 'CONTEXT_CHAT.LOADING' | translate }}</div>
+      } @else {
+        @if (showInactivityPrompt()) {
+          <div class="inactivity-prompt">
+            <p>{{ 'CONTEXT_CHAT.INACTIVITY_PROMPT' | translate }}</p>
+            <div class="inactivity-prompt__actions">
+              <p-button
+                [label]="'CONTEXT_CHAT.RESUME' | translate"
+                size="small"
+                severity="secondary"
+                [outlined]="true"
+                (onClick)="keepCurrentConversation()"
+              />
+              <p-button
+                [label]="'CONTEXT_CHAT.START_NEW' | translate"
+                size="small"
+                (onClick)="startNewConversation()"
+              />
+            </div>
+          </div>
+        }
+        <div class="message-list" #messageListContainer>
+          @if (messages().length === 0) {
+            <div class="chat-panel__state">{{ 'CONTEXT_CHAT.EMPTY' | translate }}</div>
+          }
+          @for (message of messages(); track message.id) {
+            <article class="message" [class.message--assistant]="message.role === 'assistant'">
+              <header class="message__head">
+                <span>{{ (message.role === 'assistant' ? 'CONTEXT_CHAT.ROLE_ASSISTANT' : 'CONTEXT_CHAT.ROLE_USER') | translate }}</span>
+                <span>{{ formatDate(message.created_at) }}</span>
+              </header>
+              <pre class="message__content">{{ message.content || ('CONTEXT_CHAT.MESSAGE_PENDING' | translate) }}</pre>
+            </article>
+          }
+        </div>
+        <div class="composer">
+          <textarea
+            rows="3"
+            [placeholder]="'CONTEXT_CHAT.MESSAGE_PLACEHOLDER' | translate"
+            [ngModel]="draftMessage()"
+            (ngModelChange)="draftMessage.set($event)"
+            (keydown.enter)="onComposerEnter($event)"
+            [disabled]="sending() || !!streamMessageId() || showInactivityPrompt()"
+          ></textarea>
+          <div class="composer__actions">
+            <p-button
+              [label]="'CONTEXT_CHAT.CONTINUE_IN_MAIL' | translate"
+              icon="pi pi-envelope"
+              size="small"
+              severity="secondary"
+              [outlined]="true"
+              [loading]="convertingToMail()"
+              [disabled]="convertingToMail() || sending() || !!streamMessageId()"
+              (onClick)="continueInMail()"
+            />
+            <p-button
+              [label]="'CONTEXT_CHAT.SEND' | translate"
+              icon="pi pi-send"
+              size="small"
+              [loading]="sending()"
+              [disabled]="!draftMessage().trim() || sending() || streamMessageId() || showInactivityPrompt()"
+              (onClick)="sendMessage()"
+            />
+          </div>
+        </div>
+      }
+    </p-card>
+  </section>
+}

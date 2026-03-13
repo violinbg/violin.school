@@ -11,9 +11,10 @@ import (
 )
 
 var (
-	ErrConversationNotFound = errors.New("conversation not found")
-	ErrConversationArchived = errors.New("conversation is archived")
-	ErrMessageNotFound      = errors.New("message not found")
+	ErrConversationNotFound       = errors.New("conversation not found")
+	ErrConversationArchived       = errors.New("conversation is archived")
+	ErrConversationNotContextChat = errors.New("conversation is not a context chat")
+	ErrMessageNotFound            = errors.New("message not found")
 )
 
 type Repository struct {
@@ -23,6 +24,10 @@ type Repository struct {
 type Conversation struct {
 	ID            string     `json:"id"`
 	UserID        string     `json:"user_id"`
+	ChannelType   string     `json:"channel_type"`
+	ContextKey    string     `json:"context_key"`
+	RecipientKind string     `json:"recipient_kind"`
+	RecipientID   string     `json:"recipient_id"`
 	Title         string     `json:"title"`
 	Summary       string     `json:"summary"`
 	Status        string     `json:"status"`
@@ -49,10 +54,23 @@ type Message struct {
 }
 
 type CreateConversationInput struct {
-	UserID    string
-	Title     string
-	Summary   string
-	CreatedBy string
+	UserID        string
+	ChannelType   string
+	ContextKey    string
+	RecipientKind string
+	RecipientID   string
+	Title         string
+	Summary       string
+	CreatedBy     string
+}
+
+type ListConversationsInput struct {
+	UserID        string
+	ChannelType   string
+	ContextKey    string
+	RecipientKind string
+	Limit         int
+	Offset        int
 }
 
 type CreateUserMessageInput struct {
@@ -78,14 +96,24 @@ func NewRepository(db *sql.DB) *Repository {
 	return &Repository{db: db}
 }
 
-func (r *Repository) ListConversationsForUser(ctx context.Context, userID string, limit, offset int) ([]Conversation, error) {
+func (r *Repository) ListConversationsForUser(ctx context.Context, input ListConversationsInput) ([]Conversation, error) {
+	channelType := strings.TrimSpace(input.ChannelType)
+	if channelType == "" {
+		channelType = "mail_thread"
+	}
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT id, user_id, title, summary, status, last_message_at, created_at, updated_at
-		FROM dean_conversations
-		WHERE user_id = ?
+		SELECT id, user_id, channel_type, context_key, recipient_kind, recipient_id, title, summary, status, last_message_at, created_at, updated_at
+		FROM communication_conversations
+		WHERE user_id = ? AND channel_type = ?
+		  AND (? = '' OR context_key = ?)
+		  AND (? = '' OR recipient_kind = ?)
 		ORDER BY COALESCE(last_message_at, created_at) DESC, created_at DESC
 		LIMIT ? OFFSET ?`,
-		userID, limit, offset,
+		input.UserID,
+		channelType,
+		input.ContextKey, input.ContextKey,
+		input.RecipientKind, input.RecipientKind,
+		input.Limit, input.Offset,
 	)
 	if err != nil {
 		return nil, err
@@ -112,11 +140,15 @@ func (r *Repository) CreateConversation(ctx context.Context, input CreateConvers
 	}
 	_, err := r.db.ExecContext(
 		ctx,
-		`INSERT INTO dean_conversations
-			(id, user_id, title, summary, status, created_by, created_at, updated_by, updated_at)
-		 VALUES (?, ?, ?, ?, 'active', ?, ?, ?, ?)`,
+		`INSERT INTO communication_conversations
+			(id, user_id, channel_type, context_key, recipient_kind, recipient_id, title, summary, status, created_by, created_at, updated_by, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)`,
 		id,
 		input.UserID,
+		firstNonEmpty(strings.TrimSpace(input.ChannelType), "mail_thread"),
+		strings.TrimSpace(input.ContextKey),
+		firstNonEmpty(strings.TrimSpace(input.RecipientKind), "dean_office"),
+		firstNonEmpty(strings.TrimSpace(input.RecipientID), "dean.taskford"),
 		strings.TrimSpace(input.Title),
 		strings.TrimSpace(input.Summary),
 		createdBy,
@@ -133,8 +165,8 @@ func (r *Repository) CreateConversation(ctx context.Context, input CreateConvers
 func (r *Repository) GetConversationForUser(ctx context.Context, conversationID, userID string) (Conversation, error) {
 	row := r.db.QueryRowContext(
 		ctx,
-		`SELECT id, user_id, title, summary, status, last_message_at, created_at, updated_at
-		 FROM dean_conversations
+		`SELECT id, user_id, channel_type, context_key, recipient_kind, recipient_id, title, summary, status, last_message_at, created_at, updated_at
+		 FROM communication_conversations
 		 WHERE id = ? AND user_id = ?`,
 		conversationID, userID,
 	)
@@ -148,7 +180,7 @@ func (r *Repository) GetConversationForUser(ctx context.Context, conversationID,
 func (r *Repository) ListMessagesForConversation(ctx context.Context, conversationID string, limit, offset int) ([]Message, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, conversation_id, user_id, sequence, role, status, provider, model, content, finish_reason, provider_request_id, error_text, created_at, updated_at
-		FROM dean_messages
+		FROM communication_messages
 		WHERE conversation_id = ?
 		ORDER BY sequence ASC, created_at ASC
 		LIMIT ? OFFSET ?`,
@@ -176,7 +208,7 @@ func (r *Repository) ListRecentMessagesForConversation(ctx context.Context, conv
 	}
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT id, conversation_id, user_id, sequence, role, status, provider, model, content, finish_reason, provider_request_id, error_text, created_at, updated_at
-		FROM dean_messages
+		FROM communication_messages
 		WHERE conversation_id = ?
 		ORDER BY sequence DESC
 		LIMIT ?`,
@@ -216,7 +248,7 @@ func (r *Repository) CreateUserMessageAndAssistantPlaceholder(ctx context.Contex
 	var status string
 	err = tx.QueryRowContext(
 		ctx,
-		"SELECT status FROM dean_conversations WHERE id = ? AND user_id = ?",
+		"SELECT status FROM communication_conversations WHERE id = ? AND user_id = ?",
 		input.ConversationID, input.UserID,
 	).Scan(&status)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -232,7 +264,7 @@ func (r *Repository) CreateUserMessageAndAssistantPlaceholder(ctx context.Contex
 	var nextSequence int64
 	if err := tx.QueryRowContext(
 		ctx,
-		"SELECT COALESCE(MAX(sequence), -1) + 1 FROM dean_messages WHERE conversation_id = ?",
+		"SELECT COALESCE(MAX(sequence), -1) + 1 FROM communication_messages WHERE conversation_id = ?",
 		input.ConversationID,
 	).Scan(&nextSequence); err != nil {
 		return Message{}, Message{}, err
@@ -257,7 +289,7 @@ func (r *Repository) CreateUserMessageAndAssistantPlaceholder(ctx context.Contex
 	}
 	if _, err := tx.ExecContext(
 		ctx,
-		`INSERT INTO dean_messages
+		`INSERT INTO communication_messages
 			(id, conversation_id, user_id, sequence, role, status, provider, model, content, finish_reason, provider_request_id, error_text, created_by, created_at, updated_by, updated_at)
 		 VALUES (?, ?, ?, ?, ?, ?, '', '', ?, '', '', '', ?, ?, ?, ?)`,
 		userMessage.ID,
@@ -288,7 +320,7 @@ func (r *Repository) CreateUserMessageAndAssistantPlaceholder(ctx context.Contex
 	}
 	if _, err := tx.ExecContext(
 		ctx,
-		`INSERT INTO dean_messages
+		`INSERT INTO communication_messages
 			(id, conversation_id, user_id, sequence, role, status, provider, model, content, finish_reason, provider_request_id, error_text, created_by, created_at, updated_by, updated_at)
 		 VALUES (?, ?, NULL, ?, ?, ?, ?, ?, '', '', '', '', ?, ?, ?, ?)`,
 		assistantMessage.ID,
@@ -308,7 +340,7 @@ func (r *Repository) CreateUserMessageAndAssistantPlaceholder(ctx context.Contex
 
 	if _, err := tx.ExecContext(
 		ctx,
-		"UPDATE dean_conversations SET last_message_at = ?, updated_by = ?, updated_at = ? WHERE id = ?",
+		"UPDATE communication_conversations SET last_message_at = ?, updated_by = ?, updated_at = ? WHERE id = ?",
 		now,
 		createdBy,
 		now,
@@ -328,8 +360,8 @@ func (r *Repository) GetAssistantMessageForUser(ctx context.Context, conversatio
 	row := r.db.QueryRowContext(
 		ctx,
 		`SELECT m.id, m.conversation_id, m.user_id, m.sequence, m.role, m.status, m.provider, m.model, m.content, m.finish_reason, m.provider_request_id, m.error_text, m.created_at, m.updated_at
-		 FROM dean_messages m
-		 JOIN dean_conversations c ON c.id = m.conversation_id
+		 FROM communication_messages m
+		 JOIN communication_conversations c ON c.id = m.conversation_id
 		 WHERE c.user_id = ? AND c.id = ? AND m.id = ? AND m.role = 'assistant'`,
 		userID, conversationID, messageID,
 	)
@@ -344,7 +376,7 @@ func (r *Repository) UpdateAssistantMessage(ctx context.Context, input UpdateAss
 	now := time.Now().UTC()
 	_, err := r.db.ExecContext(
 		ctx,
-		`UPDATE dean_messages
+		`UPDATE communication_messages
 		 SET status = ?, content = ?, finish_reason = ?, error_text = ?, updated_by = ?, updated_at = ?
 		 WHERE id = ? AND conversation_id = ? AND role = 'assistant'`,
 		input.Status,
@@ -359,6 +391,38 @@ func (r *Repository) UpdateAssistantMessage(ctx context.Context, input UpdateAss
 	return err
 }
 
+func (r *Repository) ConvertConversationToMailForUser(ctx context.Context, conversationID, userID, updatedBy string) (Conversation, error) {
+	conversation, err := r.GetConversationForUser(ctx, conversationID, userID)
+	if err != nil {
+		return Conversation{}, err
+	}
+	if conversation.ChannelType != "context_chat" {
+		return Conversation{}, ErrConversationNotContextChat
+	}
+
+	now := time.Now().UTC()
+	actor := strings.TrimSpace(updatedBy)
+	if actor == "" {
+		actor = strings.TrimSpace(userID)
+	}
+
+	_, err = r.db.ExecContext(
+		ctx,
+		`UPDATE communication_conversations
+		 SET channel_type = 'mail_thread', context_key = '', updated_by = ?, updated_at = ?
+		 WHERE id = ? AND user_id = ?`,
+		actor,
+		now,
+		conversationID,
+		userID,
+	)
+	if err != nil {
+		return Conversation{}, err
+	}
+
+	return r.GetConversationForUser(ctx, conversationID, userID)
+}
+
 type scanner interface {
 	Scan(dest ...interface{}) error
 }
@@ -369,6 +433,10 @@ func scanConversation(s scanner) (Conversation, error) {
 	if err := s.Scan(
 		&conversation.ID,
 		&conversation.UserID,
+		&conversation.ChannelType,
+		&conversation.ContextKey,
+		&conversation.RecipientKind,
+		&conversation.RecipientID,
 		&conversation.Title,
 		&conversation.Summary,
 		&conversation.Status,
@@ -410,4 +478,14 @@ func scanMessage(s scanner) (Message, error) {
 		message.UserID = nullableUserID.String
 	}
 	return message, nil
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		trimmed := strings.TrimSpace(value)
+		if trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
 }

@@ -3,9 +3,16 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom, Observable } from 'rxjs';
 import { AuthService } from './auth.service';
 
-export interface DeanConversation {
+export type CommunicationChannelType = 'mail_thread' | 'context_chat';
+export type CommunicationRecipientKind = 'dean_office' | string;
+
+export interface CommunicationConversation {
   id: string;
   user_id: string;
+  channel_type: CommunicationChannelType | string;
+  context_key: string;
+  recipient_kind: CommunicationRecipientKind | string;
+  recipient_id: string;
   title: string;
   summary: string;
   status: string;
@@ -14,7 +21,7 @@ export interface DeanConversation {
   updated_at: string;
 }
 
-export interface DeanMessage {
+export interface CommunicationMessage {
   id: string;
   conversation_id: string;
   user_id?: string;
@@ -31,9 +38,9 @@ export interface DeanMessage {
   updated_at: string;
 }
 
-export interface PostDeanMessageResponse {
-  user_message: DeanMessage;
-  assistant_message: DeanMessage;
+export interface PostCommunicationMessageResponse {
+  user_message: CommunicationMessage;
+  assistant_message: CommunicationMessage;
   stream: {
     url: string;
     method: 'GET' | string;
@@ -41,7 +48,7 @@ export interface PostDeanMessageResponse {
   };
 }
 
-export interface DeanStreamEvent {
+export interface CommunicationStreamEvent {
   type: string;
   delta?: string;
   content?: string;
@@ -50,38 +57,60 @@ export interface DeanStreamEvent {
 }
 
 @Injectable({ providedIn: 'root' })
-export class DeanOfficeService {
+export class CommunicationService {
   private readonly http = inject(HttpClient);
   private readonly auth = inject(AuthService);
 
-  async listConversations(limit = 50, offset = 0): Promise<DeanConversation[]> {
+  async listConversations(
+    input: { channelType?: CommunicationChannelType; contextKey?: string; recipientKind?: string; limit?: number; offset?: number } = {}
+  ): Promise<CommunicationConversation[]> {
     const response = await firstValueFrom(
-      this.http.get<{ conversations: DeanConversation[] }>('/api/v1/dean-office/conversations', {
-        params: { limit, offset },
+      this.http.get<{ conversations: CommunicationConversation[] }>('/api/v1/communications/conversations', {
+        params: {
+          channel_type: input.channelType ?? 'mail_thread',
+          context_key: input.contextKey ?? '',
+          recipient_kind: input.recipientKind ?? '',
+          limit: input.limit ?? 50,
+          offset: input.offset ?? 0,
+        },
       })
     );
     return response.conversations;
   }
 
-  async createConversation(input?: { title?: string; summary?: string }): Promise<DeanConversation> {
+  async createConversation(input?: {
+    channelType?: CommunicationChannelType;
+    contextKey?: string;
+    recipientKind?: string;
+    recipientId?: string;
+    title?: string;
+    summary?: string;
+  }): Promise<CommunicationConversation> {
     const response = await firstValueFrom(
-      this.http.post<{ conversation: DeanConversation }>('/api/v1/dean-office/conversations', input ?? {})
+      this.http.post<{ conversation: CommunicationConversation }>('/api/v1/communications/conversations', {
+        channel_type: input?.channelType ?? 'mail_thread',
+        context_key: input?.contextKey ?? '',
+        recipient_kind: input?.recipientKind ?? 'dean_office',
+        recipient_id: input?.recipientId ?? 'dean.taskford',
+        title: input?.title ?? '',
+        summary: input?.summary ?? '',
+      })
     );
     return response.conversation;
   }
 
-  async listMessages(conversationId: string, limit = 100, offset = 0): Promise<{ conversation: DeanConversation; messages: DeanMessage[] }> {
+  async listMessages(conversationId: string, limit = 100, offset = 0): Promise<{ conversation: CommunicationConversation; messages: CommunicationMessage[] }> {
     return firstValueFrom(
-      this.http.get<{ conversation: DeanConversation; messages: DeanMessage[] }>(
-        `/api/v1/dean-office/conversations/${conversationId}/messages`,
+      this.http.get<{ conversation: CommunicationConversation; messages: CommunicationMessage[] }>(
+        `/api/v1/communications/conversations/${conversationId}/messages`,
         { params: { limit, offset } }
       )
     );
   }
 
-  async postMessage(conversationId: string, content: string, provider = '', model = ''): Promise<PostDeanMessageResponse> {
+  async postMessage(conversationId: string, content: string, provider = '', model = ''): Promise<PostCommunicationMessageResponse> {
     return firstValueFrom(
-      this.http.post<PostDeanMessageResponse>(`/api/v1/dean-office/conversations/${conversationId}/messages`, {
+      this.http.post<PostCommunicationMessageResponse>(`/api/v1/communications/conversations/${conversationId}/messages`, {
         content,
         provider,
         model,
@@ -89,8 +118,15 @@ export class DeanOfficeService {
     );
   }
 
-  streamAssistantResponse(path: string): Observable<DeanStreamEvent> {
-    return new Observable<DeanStreamEvent>(subscriber => {
+  async convertConversationToMail(conversationId: string): Promise<CommunicationConversation> {
+    const response = await firstValueFrom(
+      this.http.post<{ conversation: CommunicationConversation }>(`/api/v1/communications/conversations/${conversationId}/convert-to-mail`, {})
+    );
+    return response.conversation;
+  }
+
+  streamAssistantResponse(path: string): Observable<CommunicationStreamEvent> {
+    return new Observable<CommunicationStreamEvent>(subscriber => {
       const controller = new AbortController();
       const endpoint = this.resolveApiUrl(path);
 
@@ -107,7 +143,7 @@ export class DeanOfficeService {
   private async consumeSseStream(
     endpoint: string,
     signal: AbortSignal,
-    subscriber: { next: (value: DeanStreamEvent) => void; complete: () => void; error: (error: unknown) => void; closed: boolean }
+    subscriber: { next: (value: CommunicationStreamEvent) => void; complete: () => void; error: (error: unknown) => void; closed: boolean }
   ): Promise<void> {
     const token = await this.ensureAccessToken();
     const response = await fetch(endpoint, {
@@ -146,7 +182,7 @@ export class DeanOfficeService {
       dataLines = [];
 
       try {
-        const payload = JSON.parse(rawData) as DeanStreamEvent;
+        const payload = JSON.parse(rawData) as CommunicationStreamEvent;
         if (!payload.type && eventName) {
           payload.type = eventName;
         }

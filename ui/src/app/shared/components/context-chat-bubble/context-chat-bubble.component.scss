@@ -1,0 +1,134 @@
+.chat-fab {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 1100;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  border: none;
+  background: var(--p-primary-color);
+  color: var(--p-primary-contrast-color, #fff);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgb(0 0 0 / 22%);
+}
+
+.chat-panel {
+  position: fixed;
+  right: 1rem;
+  bottom: 4.5rem;
+  width: min(360px, calc(100vw - 2rem));
+  z-index: 1100;
+}
+
+.chat-panel__close {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  z-index: 2;
+  width: 1.9rem;
+  height: 1.9rem;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--p-text-muted-color);
+  cursor: pointer;
+}
+
+.chat-panel__state {
+  color: var(--p-text-muted-color);
+  text-align: center;
+  padding: 0.75rem;
+}
+
+.inactivity-prompt {
+  border: 1px solid var(--p-surface-300);
+  border-radius: 0.5rem;
+  background: var(--p-surface-50);
+  color: var(--p-text-color);
+  padding: 0.625rem;
+  margin-bottom: 0.5rem;
+
+  @media (prefers-color-scheme: dark) {
+    background: var(--p-surface-900);
+    border-color: var(--p-surface-700);
+  }
+
+  p {
+    margin: 0 0 0.5rem;
+    font-size: 0.85rem;
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+}
+
+.message-list {
+  max-height: 40dvh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.message {
+  border: 1px solid var(--p-surface-300);
+  border-radius: 0.5rem;
+  padding: 0.5rem;
+
+  &--assistant {
+    border-left: 4px solid var(--p-primary-color);
+  }
+
+  &__head {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--p-text-muted-color);
+    margin-bottom: 0.25rem;
+  }
+
+  &__content {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font: inherit;
+    font-size: 0.875rem;
+  }
+}
+
+.composer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+
+  textarea {
+    width: 100%;
+    resize: vertical;
+    min-height: 3rem;
+    padding: 0.75rem;
+    border: 1px solid var(--p-surface-300);
+    border-radius: var(--p-border-radius-md, 0.5rem);
+    background: var(--p-surface-0);
+    color: var(--p-text-color);
+    font: inherit;
+
+    @media (prefers-color-scheme: dark) {
+      background: var(--p-surface-900);
+      border-color: var(--p-surface-700);
+    }
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+}

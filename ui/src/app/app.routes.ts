@@ -5,6 +5,7 @@ import { DashboardComponent } from './dashboard/dashboard.component';
 import { UsersComponent } from './users/users.component';
 import { AiSettingsComponent } from './ai-settings/ai-settings.component';
 import { DeanOfficeComponent } from './dean-office/dean-office.component';
+import { MailComponent } from './mail/mail.component';
 import { setupGuard, authGuard, initializedGuard } from './core/guards/auth.guard';
 import { adminGuard } from './core/guards/admin.guard';
 
@@ -13,6 +14,7 @@ export const routes: Routes = [
   { path: 'setup', component: SetupComponent, canActivate: [setupGuard] },
   { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard] },
   { path: 'dean-office', component: DeanOfficeComponent, canActivate: [authGuard] },
+  { path: 'mail', component: MailComponent, canActivate: [authGuard] },
   { path: 'users', component: UsersComponent, canActivate: [adminGuard] },
   { path: 'settings/ai', component: AiSettingsComponent, canActivate: [adminGuard] },
   { path: '**', redirectTo: '' }
