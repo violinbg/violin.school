@@ -71,16 +71,20 @@ mkdir -p ./data
 ls -lnd data
 echo "Look at the above line and enter the uid of the folder? (1000,1001...):"
 read uid
+
 docker run -it \
---memory="256m" --memory-reservation="128m" --name violin-school \
+--memory="256m" --memory-reservation="128m" --name school \
 --user $uid:$uid \
 -p 8080:8080 \
 -e PORT=8080 \
 -e DB_PATH=/data/violin.school.db \
+-e XAI_TOKEN_ENCRYPTION_KEY="<your-generated-key>" \
 -v "$(pwd)/data:/data" \
 -d violin-school:latest
-docker update --restart unless-stopped violin-school
+docker update --restart unless-stopped school
 ```
+
+Tip: For production, consider using Docker secrets or a .env file (docker run --env-file .env ...) instead of putting the key directly on the command line, since command-line arguments can be visible in process listings.
 
 Windows PowerShell:
 
