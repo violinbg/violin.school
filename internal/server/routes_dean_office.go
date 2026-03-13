@@ -33,6 +33,9 @@ func registerCommunicationRoutes(protected *gin.RouterGroup, db *sql.DB) {
 	protected.POST("/communications/conversations", handleCreateConversation(repository))
 	protected.GET("/communications/conversations/:conversationID/messages", handleListMessages(repository))
 	protected.POST("/communications/conversations/:conversationID/messages", handlePostMessage(repository))
+	protected.POST("/communications/conversations/:conversationID/archive", handleArchiveConversation(repository))
+	protected.POST("/communications/conversations/:conversationID/restore", handleRestoreConversation(repository))
+	protected.DELETE("/communications/conversations/:conversationID", handleDeleteConversation(repository))
 	protected.POST("/communications/conversations/:conversationID/convert-to-mail", handleConvertConversationToMail(repository))
 	protected.GET("/communications/conversations/:conversationID/messages/:messageID/stream", handleStreamMessage(repository, streamProvider, db))
 }
@@ -56,12 +59,14 @@ func handleListConversations(repository *dean.Repository) gin.HandlerFunc {
 		channelType := firstNonEmpty(strings.TrimSpace(c.Query("channel_type")), "mail_thread")
 		contextKey := strings.TrimSpace(c.Query("context_key"))
 		recipientKind := strings.TrimSpace(c.Query("recipient_kind"))
+		status := strings.TrimSpace(c.Query("status"))
 
 		conversations, err := repository.ListConversationsForUser(c.Request.Context(), dean.ListConversationsInput{
 			UserID:        userID,
 			ChannelType:   channelType,
 			ContextKey:    contextKey,
 			RecipientKind: recipientKind,
+			Status:        status,
 			Limit:         limit,
 			Offset:        offset,
 		})
@@ -260,6 +265,98 @@ func handleConvertConversationToMail(repository *dean.Repository) gin.HandlerFun
 		}
 
 		c.JSON(http.StatusOK, gin.H{"conversation": conversation})
+	}
+}
+
+func handleArchiveConversation(repository *dean.Repository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, ok := deanOfficeUserID(c)
+		if !ok {
+			return
+		}
+
+		conversationID := strings.TrimSpace(c.Param("conversationID"))
+		if conversationID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "conversation id is required"})
+			return
+		}
+
+		conversation, err := repository.ArchiveConversationForUser(c.Request.Context(), conversationID, userID, userID)
+		if errors.Is(err, dean.ErrConversationNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "conversation not found"})
+			return
+		}
+		if errors.Is(err, dean.ErrConversationArchived) {
+			c.JSON(http.StatusConflict, gin.H{"error": "conversation is already archived"})
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not archive conversation"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"conversation": conversation})
+	}
+}
+
+func handleRestoreConversation(repository *dean.Repository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, ok := deanOfficeUserID(c)
+		if !ok {
+			return
+		}
+
+		conversationID := strings.TrimSpace(c.Param("conversationID"))
+		if conversationID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "conversation id is required"})
+			return
+		}
+
+		conversation, err := repository.RestoreConversationForUser(c.Request.Context(), conversationID, userID, userID)
+		if errors.Is(err, dean.ErrConversationNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "conversation not found"})
+			return
+		}
+		if errors.Is(err, dean.ErrConversationActive) {
+			c.JSON(http.StatusConflict, gin.H{"error": "conversation is already active"})
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not restore conversation"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{"conversation": conversation})
+	}
+}
+
+func handleDeleteConversation(repository *dean.Repository) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		userID, ok := deanOfficeUserID(c)
+		if !ok {
+			return
+		}
+
+		conversationID := strings.TrimSpace(c.Param("conversationID"))
+		if conversationID == "" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "conversation id is required"})
+			return
+		}
+
+		err := repository.DeleteConversationForUser(c.Request.Context(), conversationID, userID)
+		if errors.Is(err, dean.ErrConversationNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "conversation not found"})
+			return
+		}
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "could not delete conversation"})
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"conversation_id": conversationID,
+			"deleted":         true,
+		})
 	}
 }
 

@@ -13,6 +13,7 @@ import (
 var (
 	ErrConversationNotFound       = errors.New("conversation not found")
 	ErrConversationArchived       = errors.New("conversation is archived")
+	ErrConversationActive         = errors.New("conversation is active")
 	ErrConversationNotContextChat = errors.New("conversation is not a context chat")
 	ErrMessageNotFound            = errors.New("message not found")
 )
@@ -69,6 +70,7 @@ type ListConversationsInput struct {
 	ChannelType   string
 	ContextKey    string
 	RecipientKind string
+	Status        string
 	Limit         int
 	Offset        int
 }
@@ -107,12 +109,14 @@ func (r *Repository) ListConversationsForUser(ctx context.Context, input ListCon
 		WHERE user_id = ? AND channel_type = ?
 		  AND (? = '' OR context_key = ?)
 		  AND (? = '' OR recipient_kind = ?)
+		  AND (? = '' OR status = ?)
 		ORDER BY COALESCE(last_message_at, created_at) DESC, created_at DESC
 		LIMIT ? OFFSET ?`,
 		input.UserID,
 		channelType,
 		input.ContextKey, input.ContextKey,
 		input.RecipientKind, input.RecipientKind,
+		input.Status, input.Status,
 		input.Limit, input.Offset,
 	)
 	if err != nil {
@@ -421,6 +425,93 @@ func (r *Repository) ConvertConversationToMailForUser(ctx context.Context, conve
 	}
 
 	return r.GetConversationForUser(ctx, conversationID, userID)
+}
+
+func (r *Repository) ArchiveConversationForUser(ctx context.Context, conversationID, userID, updatedBy string) (Conversation, error) {
+	conversation, err := r.GetConversationForUser(ctx, conversationID, userID)
+	if err != nil {
+		return Conversation{}, err
+	}
+	if conversation.Status == "archived" {
+		return Conversation{}, ErrConversationArchived
+	}
+
+	now := time.Now().UTC()
+	actor := strings.TrimSpace(updatedBy)
+	if actor == "" {
+		actor = strings.TrimSpace(userID)
+	}
+
+	_, err = r.db.ExecContext(
+		ctx,
+		`UPDATE communication_conversations
+		 SET status = 'archived', updated_by = ?, updated_at = ?
+		 WHERE id = ? AND user_id = ?`,
+		actor,
+		now,
+		conversationID,
+		userID,
+	)
+	if err != nil {
+		return Conversation{}, err
+	}
+
+	return r.GetConversationForUser(ctx, conversationID, userID)
+}
+
+func (r *Repository) RestoreConversationForUser(ctx context.Context, conversationID, userID, updatedBy string) (Conversation, error) {
+	conversation, err := r.GetConversationForUser(ctx, conversationID, userID)
+	if err != nil {
+		return Conversation{}, err
+	}
+	if conversation.Status == "active" {
+		return Conversation{}, ErrConversationActive
+	}
+
+	now := time.Now().UTC()
+	actor := strings.TrimSpace(updatedBy)
+	if actor == "" {
+		actor = strings.TrimSpace(userID)
+	}
+
+	_, err = r.db.ExecContext(
+		ctx,
+		`UPDATE communication_conversations
+		 SET status = 'active', updated_by = ?, updated_at = ?
+		 WHERE id = ? AND user_id = ?`,
+		actor,
+		now,
+		conversationID,
+		userID,
+	)
+	if err != nil {
+		return Conversation{}, err
+	}
+
+	return r.GetConversationForUser(ctx, conversationID, userID)
+}
+
+func (r *Repository) DeleteConversationForUser(ctx context.Context, conversationID, userID string) error {
+	result, err := r.db.ExecContext(
+		ctx,
+		`DELETE FROM communication_conversations
+		 WHERE id = ? AND user_id = ?`,
+		conversationID,
+		userID,
+	)
+	if err != nil {
+		return err
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rowsAffected == 0 {
+		return ErrConversationNotFound
+	}
+
+	return nil
 }
 
 type scanner interface {

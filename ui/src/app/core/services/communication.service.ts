@@ -5,6 +5,7 @@ import { AuthService } from './auth.service';
 
 export type CommunicationChannelType = 'mail_thread' | 'context_chat';
 export type CommunicationRecipientKind = 'dean_office' | string;
+export type CommunicationConversationStatus = 'active' | 'archived' | string;
 
 export interface CommunicationConversation {
   id: string;
@@ -62,7 +63,14 @@ export class CommunicationService {
   private readonly auth = inject(AuthService);
 
   async listConversations(
-    input: { channelType?: CommunicationChannelType; contextKey?: string; recipientKind?: string; limit?: number; offset?: number } = {}
+    input: {
+      channelType?: CommunicationChannelType;
+      contextKey?: string;
+      recipientKind?: string;
+      status?: CommunicationConversationStatus;
+      limit?: number;
+      offset?: number;
+    } = {}
   ): Promise<CommunicationConversation[]> {
     const response = await firstValueFrom(
       this.http.get<{ conversations: CommunicationConversation[] }>('/api/v1/communications/conversations', {
@@ -70,6 +78,7 @@ export class CommunicationService {
           channel_type: input.channelType ?? 'mail_thread',
           context_key: input.contextKey ?? '',
           recipient_kind: input.recipientKind ?? '',
+          status: input.status ?? '',
           limit: input.limit ?? 50,
           offset: input.offset ?? 0,
         },
@@ -123,6 +132,24 @@ export class CommunicationService {
       this.http.post<{ conversation: CommunicationConversation }>(`/api/v1/communications/conversations/${conversationId}/convert-to-mail`, {})
     );
     return response.conversation;
+  }
+
+  async archiveConversation(conversationId: string): Promise<CommunicationConversation> {
+    const response = await firstValueFrom(
+      this.http.post<{ conversation: CommunicationConversation }>(`/api/v1/communications/conversations/${conversationId}/archive`, {})
+    );
+    return response.conversation;
+  }
+
+  async restoreConversation(conversationId: string): Promise<CommunicationConversation> {
+    const response = await firstValueFrom(
+      this.http.post<{ conversation: CommunicationConversation }>(`/api/v1/communications/conversations/${conversationId}/restore`, {})
+    );
+    return response.conversation;
+  }
+
+  async deleteConversation(conversationId: string): Promise<void> {
+    await firstValueFrom(this.http.delete(`/api/v1/communications/conversations/${conversationId}`));
   }
 
   streamAssistantResponse(path: string): Observable<CommunicationStreamEvent> {

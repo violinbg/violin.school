@@ -1,4 +1,5 @@
 <p-toast></p-toast>
+<p-confirmDialog></p-confirmDialog>
 
 <div class="mail">
   <vs-app-header
@@ -11,78 +12,98 @@
   />
 
   <main class="mail__content">
-    <aside class="conversations">
-      <p-card [header]="'MAIL.CONVERSATIONS' | translate">
-        <div class="new-conversation">
-          <p-select
-            [options]="recipients"
-            [ngModel]="selectedRecipient()"
-            optionLabel="labelKey"
-            [disabled]="creatingConversation() || isStreaming()"
-            (ngModelChange)="selectedRecipient.set($event)"
-          >
-            <ng-template #selectedItem let-option>
-              {{ option.labelKey | translate }}
-            </ng-template>
-            <ng-template #item let-option>
-              {{ option.labelKey | translate }}
-            </ng-template>
-          </p-select>
-          <input
-            type="text"
-            [placeholder]="'MAIL.NEW_TITLE_PLACEHOLDER' | translate"
-            [ngModel]="conversationTitle()"
-            (ngModelChange)="conversationTitle.set($event)"
-            [disabled]="creatingConversation() || isStreaming()"
-          />
-          <textarea
-            rows="2"
-            [placeholder]="'MAIL.NEW_SUMMARY_PLACEHOLDER' | translate"
-            [ngModel]="conversationSummary()"
-            (ngModelChange)="conversationSummary.set($event)"
-            [disabled]="creatingConversation() || isStreaming()"
-          ></textarea>
-          <p-button
-            [label]="'MAIL.CREATE_CONVERSATION' | translate"
-            icon="pi pi-plus"
-            size="small"
-            [loading]="creatingConversation()"
-            [disabled]="creatingConversation() || isStreaming()"
-            (onClick)="createConversation()"
-          />
-        </div>
-
-        @if (loadingConversations()) {
-          <div class="loading-state">
-            <i class="pi pi-spin pi-spinner"></i>
-            <span>{{ 'MAIL.LOADING_CONVERSATIONS' | translate }}</span>
-          </div>
-        } @else if (conversations().length === 0) {
-          <div class="empty-state">{{ 'MAIL.NO_CONVERSATIONS' | translate }}</div>
-        } @else {
-          <div class="conversation-list">
-            @for (conversation of conversations(); track trackConversation($index, conversation)) {
-              <button
-                type="button"
-                class="conversation-item"
-                [class.conversation-item--active]="isSelected(conversation.id)"
-                [disabled]="loadingMessages() || isStreaming()"
-                (click)="selectConversation(conversation.id)"
-              >
-                <div class="conversation-item__title">{{ conversation.title || ('MAIL.UNTITLED' | translate) }}</div>
-                <div class="conversation-item__summary">{{ conversation.summary || ('MAIL.NO_SUMMARY' | translate) }}</div>
-                <div class="conversation-item__meta">
-                  {{ resolveRecipientLabel(conversation) }} · {{ formatDate(conversation.last_message_at || conversation.created_at) }}
-                </div>
-              </button>
-            }
-          </div>
-        }
-      </p-card>
+    <aside class="mail-rail">
+      <div class="mail-rail__top">
+        <div class="mail-rail__title">{{ 'MAIL.TITLE' | translate }}</div>
+        <p-button
+          icon="pi pi-plus"
+          [text]="true"
+          [rounded]="true"
+          [disabled]="folder() === 'trash' || creatingConversation() || isStreaming()"
+          (onClick)="openComposeDialog()"
+        />
+      </div>
+      <nav class="mail-rail__nav">
+        <button type="button" class="mail-nav-item" [class.mail-nav-item--active]="folder() === 'inbox'" (click)="selectFolder('inbox')">
+          <i class="pi pi-inbox"></i>
+          <span>{{ 'MAIL.FOLDER_INBOX' | translate }}</span>
+        </button>
+        <button type="button" class="mail-nav-item" [class.mail-nav-item--active]="folder() === 'trash'" (click)="selectFolder('trash')">
+          <i class="pi pi-trash"></i>
+          <span>{{ 'MAIL.FOLDER_TRASH' | translate }}</span>
+        </button>
+      </nav>
     </aside>
 
-    <section class="chat-pane">
-      <p-card [header]="'MAIL.CHAT' | translate">
+    <section class="conversations-pane">
+      <div class="pane-header">
+        <h2>{{ 'MAIL.CONVERSATIONS' | translate }}</h2>
+      </div>
+      @if (loadingConversations()) {
+        <div class="loading-state">
+          <i class="pi pi-spin pi-spinner"></i>
+          <span>{{ 'MAIL.LOADING_CONVERSATIONS' | translate }}</span>
+        </div>
+      } @else if (conversations().length === 0) {
+        <div class="empty-state">{{ 'MAIL.NO_CONVERSATIONS' | translate }}</div>
+      } @else {
+        <div class="conversation-list">
+          @for (conversation of conversations(); track trackConversation($index, conversation)) {
+            <button
+              type="button"
+              class="conversation-item"
+              [class.conversation-item--active]="isSelected(conversation.id)"
+              [disabled]="loadingMessages() || isStreaming()"
+              (click)="selectConversation(conversation.id)"
+            >
+              <div class="conversation-item__avatar">{{ resolveAvatarInitials(conversation) }}</div>
+              <div class="conversation-item__content">
+                <div class="conversation-item__header">
+                  <div class="conversation-item__recipient">{{ resolveRecipientLabel(conversation) }}</div>
+                  <div class="conversation-item__time">{{ formatDate(conversation.last_message_at || conversation.created_at) }}</div>
+                </div>
+                <div class="conversation-item__title">{{ resolveConversationSubject(conversation) }}</div>
+                <div class="conversation-item__summary">{{ resolveConversationPreview(conversation) }}</div>
+              </div>
+            </button>
+          }
+        </div>
+      }
+    </section>
+
+    <section class="thread-pane">
+      <header class="pane-header thread-pane__header">
+        <div>
+          <h2>{{ selectedConversation()?.title || ('MAIL.CHAT' | translate) }}</h2>
+          @if (selectedConversation()?.summary) {
+            <div class="pane-subtitle">{{ selectedConversation()?.summary }}</div>
+          }
+        </div>
+        <div class="thread-pane__actions">
+          @if (folder() === 'trash') {
+            <p-button
+              [label]="'MAIL.RESTORE_CONVERSATION' | translate"
+              icon="pi pi-replay"
+              severity="secondary"
+              [outlined]="true"
+              size="small"
+              [disabled]="!selectedConversationId() || isStreaming()"
+              (onClick)="onRestoreConversationClick()"
+            />
+          }
+          <p-button
+            [label]="'MAIL.DELETE_CONVERSATION' | translate"
+            icon="pi pi-trash"
+            severity="danger"
+            [outlined]="true"
+            size="small"
+            [disabled]="!selectedConversationId() || isStreaming()"
+            (onClick)="onDeleteConversationClick()"
+          />
+        </div>
+      </header>
+
+      <div class="thread-pane__body">
         @if (!selectedConversationId()) {
           <div class="empty-state">{{ 'MAIL.SELECT_PROMPT' | translate }}</div>
         } @else if (loadingMessages()) {
@@ -118,26 +139,95 @@
           </div>
         }
 
-        <div class="composer">
-          <textarea
-            rows="4"
-            [placeholder]="'MAIL.MESSAGE_PLACEHOLDER' | translate"
-            [ngModel]="draftMessage()"
-            (ngModelChange)="draftMessage.set($event)"
-            (keydown.enter)="onComposerEnter($event)"
-            [disabled]="!selectedConversationId() || sendingMessage() || isStreaming()"
-          ></textarea>
-          <div class="composer__actions">
-            <p-button
-              [label]="'MAIL.SEND' | translate"
-              icon="pi pi-send"
-              [loading]="sendingMessage()"
-              [disabled]="!selectedConversationId() || !draftMessage().trim() || sendingMessage() || isStreaming()"
-              (onClick)="sendMessage()"
-            />
+        @if (folder() === 'inbox') {
+          <div class="composer">
+            <textarea
+              rows="4"
+              [placeholder]="'MAIL.MESSAGE_PLACEHOLDER' | translate"
+              [ngModel]="draftMessage()"
+              (ngModelChange)="draftMessage.set($event)"
+              (keydown.enter)="onComposerEnter($event)"
+              [disabled]="!selectedConversationId() || sendingMessage() || isStreaming()"
+            ></textarea>
+            <div class="composer__actions">
+              <p-button
+                [label]="'MAIL.SEND' | translate"
+                icon="pi pi-send"
+                [loading]="sendingMessage()"
+                [disabled]="!selectedConversationId() || !draftMessage().trim() || sendingMessage() || isStreaming()"
+                (onClick)="sendMessage()"
+              />
+            </div>
           </div>
-        </div>
-      </p-card>
+        }
+      </div>
     </section>
   </main>
 </div>
+
+<p-dialog
+  [visible]="showComposeDialog()"
+  [modal]="true"
+  [draggable]="false"
+  [resizable]="false"
+  [closable]="!creatingConversation()"
+  [dismissableMask]="!creatingConversation()"
+  [header]="'MAIL.COMPOSE_TITLE' | translate"
+  styleClass="mail-compose-dialog"
+  [style]="{ width: 'min(640px, 95vw)' }"
+  (visibleChange)="showComposeDialog.set($event)"
+>
+  <div class="compose-form">
+    <label class="compose-form__label">{{ 'MAIL.COMPOSE_TO' | translate }}</label>
+    <p-select
+      [options]="recipients"
+      [ngModel]="selectedRecipient()"
+      optionLabel="labelKey"
+      [disabled]="creatingConversation() || isStreaming()"
+      (ngModelChange)="selectedRecipient.set($event)"
+    >
+      <ng-template #selectedItem let-option>
+        {{ option.labelKey | translate }}
+      </ng-template>
+      <ng-template #item let-option>
+        {{ option.labelKey | translate }}
+      </ng-template>
+    </p-select>
+
+    <label class="compose-form__label">{{ 'MAIL.COMPOSE_SUBJECT' | translate }}</label>
+    <input
+      type="text"
+      [placeholder]="'MAIL.NEW_TITLE_PLACEHOLDER' | translate"
+      [ngModel]="composeSubject()"
+      (ngModelChange)="composeSubject.set($event)"
+      [disabled]="creatingConversation() || isStreaming()"
+    />
+
+    <label class="compose-form__label">{{ 'MAIL.COMPOSE_MESSAGE' | translate }}</label>
+    <textarea
+      rows="7"
+      [placeholder]="'MAIL.COMPOSE_MESSAGE_PLACEHOLDER' | translate"
+      [ngModel]="composeMessage()"
+      (ngModelChange)="composeMessage.set($event)"
+      [disabled]="creatingConversation() || isStreaming()"
+    ></textarea>
+  </div>
+  <ng-template pTemplate="footer">
+    <div class="compose-form__actions">
+      <p-button
+        [label]="'MAIL.CANCEL' | translate"
+        severity="secondary"
+        [outlined]="true"
+        [disabled]="creatingConversation()"
+        (onClick)="closeComposeDialog()"
+      />
+      <p-button
+        [label]="'MAIL.SEND' | translate"
+        icon="pi pi-send"
+        [loading]="creatingConversation()"
+        [disabled]="creatingConversation() || !composeMessage().trim() || isStreaming()"
+        (onClick)="createConversation()"
+      />
+    </div>
+  </ng-template>
+</p-dialog>
